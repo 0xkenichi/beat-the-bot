@@ -1,0 +1,17 @@
+{
+  "name": "@btb/telegram",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts", "./*": "./src/*.ts" },
+  "scripts": {
+    "start": "tsx src/poll.ts",
+    "broadcast": "tsx src/broadcast.ts",
+    "test": "vitest run",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@btb/shared": "workspace:*",
+    "grammy": "1.46.0"
+  }
+}

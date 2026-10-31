@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web-prod",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["SESSION_SECRET=local-dev-only-not-a-secret-0123456789", "DATABASE_URL=pglite:", "BASE_RPC_URL=https://base-mainnet.g.alchemy.com/public", "NEXT_TELEMETRY_DISABLED=1", "pnpm", "--dir", "web", "exec", "next", "start", "-p", "3300"],
+      "port": 3300
+    },
+    {
+      "name": "web-dev",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["SESSION_SECRET=local-dev-only-not-a-secret-0123456789", "DATABASE_URL=pglite:", "BASE_RPC_URL=https://base-mainnet.g.alchemy.com/public", "NEXT_TELEMETRY_DISABLED=1", "pnpm", "--dir", "web", "exec", "next", "dev", "-p", "3301"],
+      "port": 3301
+    }
+  ]
+}

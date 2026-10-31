@@ -17,3 +17,4 @@ contracts/broadcast/**/dry-run/
 data/local/
 *.log
 .DS_Store
+web/public/js/

@@ -19,8 +19,13 @@ export type Holding = {
 export type WalletValue = { wallet: Address; block: bigint; navUsd: number; usdcRaw: bigint; holdings: Holding[] };
 
 /** Values a wallet: USDC plus every universe stock (raw x uiMultiplier x Chainlink price), all at one block. */
-export async function valueWallet(client: PublicClient, wallet: Address, universe: UniverseToken[] = UNIVERSE): Promise<WalletValue> {
-  const block = await client.getBlockNumber();
+export async function valueWallet(
+  client: PublicClient,
+  wallet: Address,
+  universe: UniverseToken[] = UNIVERSE,
+  opts: { blockNumber?: bigint; prices?: Record<string, bigint> } = {},
+): Promise<WalletValue> {
+  const block = opts.blockNumber ?? (await client.getBlockNumber());
   const calls = [
     { address: ADDR.USDC, abi: erc20Abi, functionName: "balanceOf", args: [wallet] } as const,
     ...universe.flatMap((t) => [
@@ -34,7 +39,8 @@ export async function valueWallet(client: PublicClient, wallet: Address, univers
   const holdings: Holding[] = universe.map((t, i) => {
     const raw = res[1 + i * 3] as bigint;
     const mult = res[2 + i * 3] as bigint;
-    const [roundId, answer, , updatedAt] = res[3 + i * 3] as readonly [bigint, bigint, bigint, bigint, bigint];
+    const [roundId, latestAnswer, , updatedAt] = res[3 + i * 3] as readonly [bigint, bigint, bigint, bigint, bigint];
+    const answer = opts.prices?.[t.address.toLowerCase()] ?? latestAnswer;
     return {
       token: t.address,
       ticker: t.ticker,

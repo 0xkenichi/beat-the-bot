@@ -1,0 +1,22 @@
+{
+  "name": "@btb/scoring",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "tick": "tsx src/cli.ts tick",
+    "open": "tsx src/cli.ts open",
+    "score": "tsx src/cli.ts score",
+    "settle": "tsx src/cli.ts settle",
+    "relay": "tsx src/cli.ts relay-signed",
+    "metrics": "tsx src/cli.ts metrics",
+    "test": "vitest run",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@btb/indexer": "workspace:*",
+    "@btb/shared": "workspace:*",
+    "@btb/telegram": "workspace:*",
+    "viem": "2.57.7"
+  }
+}

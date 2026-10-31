@@ -1,0 +1,32 @@
+{
+  "name": "@btb/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/build-client.mjs && next dev",
+    "build": "node scripts/build-client.mjs && next build",
+    "start": "next start",
+    "typecheck": "tsc -p . --noEmit",
+    "build:client": "node scripts/build-client.mjs"
+  },
+  "dependencies": {
+    "@base-org/account": "2.5.13",
+    "@btb/shared": "workspace:*",
+    "@btb/telegram": "workspace:*",
+    "grammy": "1.46.0",
+    "next": "16.4.2",
+    "ox": "1.8.8",
+    "qrcode": "1.5.4",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "viem": "2.57.7"
+  },
+  "devDependencies": {
+    "@types/qrcode": "1.5.6",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "5.9.3",
+    "esbuild": "0.28.2"
+  }
+}

@@ -1,5 +1,6 @@
 import { Attribution } from "ox/erc8021";
 import type { Hex } from "viem";
+import { DEPLOYMENTS } from "./config";
 
 /**
  * ERC-8021 data suffix for a Base Builder Code (schema 0): codes | length | 0x00 | 0x8021 x8.
@@ -23,8 +24,8 @@ export function hasBuilderCode(data: Hex | undefined, code: string): boolean {
 
 /** Reads the Builder Code from env and fails loudly if it is missing, so nothing is ever sent unattributed. */
 export function requireBuilderCode(env: Record<string, string | undefined> = process.env): string {
-  const code = env.BUILDER_CODE ?? env.NEXT_PUBLIC_BUILDER_CODE;
-  if (!code) throw new Error("BUILDER_CODE is not set. Register the app on base.dev and put its Builder Code in .env.");
+  const code = env.BUILDER_CODE ?? env.NEXT_PUBLIC_BUILDER_CODE ?? DEPLOYMENTS.builderCode;
+  if (!code) throw new Error("No Builder Code: register the app on base.dev and put its code in shared/src/deployments.json (or BUILDER_CODE).");
   builderCodeSuffix(code); // validates
   return code;
 }

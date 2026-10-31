@@ -129,6 +129,17 @@ create table if not exists weeks (
   settle_txs jsonb,
   status text not null default 'scheduled'
 );
+create table if not exists signed_locks (
+  week integer not null,
+  wallet text not null,
+  picks jsonb not null,
+  deadline bigint not null,
+  signature text not null,
+  created_at timestamptz not null default now(),
+  relayed_tx text,
+  error text,
+  primary key (week, wallet)
+);
 create table if not exists kv (
   key text primary key,
   value jsonb not null,
