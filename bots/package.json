@@ -1,0 +1,17 @@
+{
+  "name": "@btb/bots",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "rebalance": "tsx src/cli.ts rebalance",
+    "snapshot": "tsx src/cli.ts snapshot",
+    "status": "tsx src/cli.ts status",
+    "test": "vitest run",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@btb/shared": "workspace:*",
+    "viem": "2.57.7"
+  }
+}

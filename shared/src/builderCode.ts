@@ -15,7 +15,7 @@ export function hasBuilderCode(data: Hex | undefined, code: string): boolean {
   if (!data) return false;
   try {
     const a = Attribution.fromData(data as `0x${string}`);
-    return !!a && a.codes.includes(code);
+    return !!a && (a.codes ?? []).includes(code);
   } catch {
     return false;
   }

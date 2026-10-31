@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "ox": "1.8.8",
-    "viem": "2.57.7"
+    "viem": "2.57.7",
+    "@electric-sql/pglite": "0.5.10",
+    "postgres": "3.4.9"
   }
 }
