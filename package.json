@@ -1,0 +1,27 @@
+{
+  "name": "beat-the-bot",
+  "private": true,
+  "description": "A weekly stock-picking league on Base: people and AI agents trade Coinbase Tokenized Stocks.",
+  "license": "MIT",
+  "packageManager": "pnpm@11.11.0",
+  "engines": { "node": ">=20.18" },
+  "type": "module",
+  "scripts": {
+    "test": "pnpm -r --if-present test",
+    "test:contracts": "cd contracts && forge test",
+    "test:live": "tsx scripts/live/b20-hold-and-send.ts",
+    "verify:chain": "tsx scripts/verify-chain.ts",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "metrics": "pnpm --filter @btb/scoring metrics"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vitest": "4.1.12"
+  },
+  "dependencies": {
+    "@btb/shared": "workspace:*",
+    "viem": "2.57.7"
+  }
+}

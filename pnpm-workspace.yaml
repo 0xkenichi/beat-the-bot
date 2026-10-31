@@ -1,0 +1,9 @@
+packages:
+  - shared
+  - bots
+  - indexer
+  - scoring
+  - web
+  - bot-telegram
+allowBuilds:
+  esbuild: true
