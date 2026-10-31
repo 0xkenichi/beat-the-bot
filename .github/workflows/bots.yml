@@ -1,0 +1,32 @@
+# House bots rebalance once a week, right after the US open on the week's first trading day.
+# Runs every 15 minutes on Monday and Tuesday mornings (US time); the bots skip when the market is closed
+# or when they already traded this week. Holds the three bot keys only.
+name: bots
+on:
+  schedule:
+    - cron: "*/15 13-16 * * 1,2"
+  workflow_dispatch:
+concurrency: { group: bots, cancel-in-progress: false }
+permissions:
+  contents: read
+jobs:
+  rebalance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+      BOT_MOMENTUM_PRIVATE_KEY: ${{ secrets.BOT_MOMENTUM_PRIVATE_KEY }}
+      BOT_CONTRARIAN_PRIVATE_KEY: ${{ secrets.BOT_CONTRARIAN_PRIVATE_KEY }}
+      BOT_STEADY_PRIVATE_KEY: ${{ secrets.BOT_STEADY_PRIVATE_KEY }}
+      LLM_BASE_URL: ${{ secrets.LLM_BASE_URL }}
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+      LLM_MODEL: ${{ secrets.LLM_MODEL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @btb/bots exec tsx src/cli.ts init
+      - run: pnpm --filter @btb/bots rebalance

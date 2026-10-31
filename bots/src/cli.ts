@@ -4,7 +4,7 @@
 //   pnpm --filter @btb/bots status
 import { formatEther, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { HOUSE_AGENTS, UNIVERSE, makePublicClient, requireBuilderCode, valueWallet, weekIdAt, type HouseAgent } from "@btb/shared";
+import { HOUSE_AGENTS, UNIVERSE, isMarketOpen, makePublicClient, requireBuilderCode, valueWallet, weekIdAt, weekSchedule, type HouseAgent } from "@btb/shared";
 import { getDb, kvGet, kvSet, migrate } from "@btb/shared/db";
 import { loadEnv } from "@btb/shared/env";
 import { momentum } from "./strategies/momentum";
@@ -47,6 +47,10 @@ async function rebalance() {
   const week = weekIdAt(now);
   const only = opt("bot");
   const dry = flag("dry-run");
+  if (!dry && (!isMarketOpen(now) || now < weekSchedule(Math.max(1, week)).entryClose)) {
+    console.log("Market closed or entries still open: bots trade after the US open on the week's first trading day.");
+    return;
+  }
   for (const a of HOUSE_AGENTS.filter((x) => !only || x.id === only)) {
     const key = process.env[a.keyEnv] as Hex | undefined;
     const addr = botAddress(a);

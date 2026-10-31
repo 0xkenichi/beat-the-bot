@@ -66,17 +66,22 @@ export type Results = {
 
 /**
  * Scores a week at the US close. Pure inputs: snapshots, flows, locks and Chainlink cutoff prices, so a dry run
- * can be checked by hand. Winners need a linked Telegram account; in weeks 1-2 also Kenichi's approval list.
+ * can be checked by hand. Winners need a linked Telegram account and must not be on Kenichi's exclusion list.
  */
-export async function scoreWeek(client: PublicClient, db: Db, week: number, opts: { approved?: string[]; takeSnapshot?: boolean } = {}): Promise<{ results: Results; hash: `0x${string}` }> {
+export async function scoreWeek(
+  client: PublicClient,
+  db: Db,
+  week: number,
+  opts: { excluded?: string[]; takeSnapshot?: boolean; now?: number; closePrices?: Record<string, PriceRec> } = {},
+): Promise<{ results: Results; hash: `0x${string}` }> {
   const s = weekSchedule(week);
-  if (Date.now() / 1000 < s.scoreAt) throw new Error(`Week ${week} is scored at ${new Date(s.scoreAt * 1000).toISOString()}`);
+  if ((opts.now ?? Date.now() / 1000) < s.scoreAt) throw new Error(`Week ${week} is scored at ${new Date(s.scoreAt * 1000).toISOString()}`);
   const [w] = await db.query<{ open_prices: Record<string, PriceRec> | null; universe: string[]; prize_token: string | null; real_pot_raw: string | null; paper_pot_raw: string | null }>(
     "select open_prices, universe, prize_token, real_pot_raw, paper_pot_raw from weeks where week = $1",
     [week],
   );
   if (!w?.open_prices) throw new Error(`Week ${week} has no opening prices (run open first)`);
-  const close = await cutoffPrices(client, s.scoreAt);
+  const close = opts.closePrices ?? (await cutoffPrices(client, s.scoreAt));
   const closeSnap = opts.takeSnapshot === false ? { blockNumber: "skipped" } : await snapshotAt(client, db, s.scoreAt, close);
 
   const snaps = await db.query<{ wallet: string; taken_at: Date | string; nav_usd: number }>(
@@ -101,9 +106,10 @@ export async function scoreWeek(client: PublicClient, db: Db, week: number, opts
   );
   const players = await db.query<{ wallet: string; display_name: string | null; telegram_id: string | null }>("select wallet, display_name, telegram_id from players where non_us_confirmed_at is not null");
   const short = (x: string) => `${x.slice(0, 6)}…${x.slice(-4)}`;
-  const approved = new Set((opts.approved ?? []).map((x) => x.toLowerCase()));
-  const needApproval = week <= 2;
-  const eligible = (wallet: string, tg: string | null) => !!tg && (!needApproval || approved.has(wallet));
+  // Prize eligibility: a linked Telegram account (one each way). Kenichi can exclude wallets he finds belong to
+  // the same person; in weeks 1-2 settlement also waits for his confirmation (see cli.ts settle --approved).
+  const excluded = new Set((opts.excluded ?? []).map((x) => x.toLowerCase()));
+  const eligible = (wallet: string, tg: string | null) => !!tg && !excluded.has(wallet.toLowerCase());
   const real: Row[] = rankTier(
     players
       .map((p) => ({ p, r: twr(p.wallet) }))
@@ -159,7 +165,7 @@ export async function scoreWeek(client: PublicClient, db: Db, week: number, opts
     prizeToken: token,
     pots: { real: w.real_pot_raw ?? "0", paper: w.paper_pot_raw ?? "0" },
     snapshots: { open: String(s.entryClose), close: String(closeSnap.blockNumber) },
-    updatedAt: Math.floor(Date.now() / 1000),
+    updatedAt: Math.floor(opts.now ?? Date.now() / 1000),
   };
   return { results, hash: resultsHash(results) };
 }

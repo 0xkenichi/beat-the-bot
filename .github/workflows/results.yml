@@ -1,0 +1,30 @@
+# Starts 45 minutes before the Friday close (or a holiday Thursday or early close), scores the week at the close
+# and posts the results at the same minute every week. Exits at once when it is not results time.
+name: results
+on:
+  schedule:
+    - cron: "15 20 * * 4,5"
+    - cron: "15 17 * * 4,5"
+    - cron: "15 19 * * 4,5"
+  workflow_dispatch:
+concurrency: { group: results, cancel-in-progress: false }
+permissions:
+  contents: read
+jobs:
+  results:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+      RESOLVER_PRIVATE_KEY: ${{ secrets.RESOLVER_PRIVATE_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_GROUP_CHAT_ID: ${{ secrets.TELEGRAM_GROUP_CHAT_ID }}
+      NEXT_PUBLIC_SITE_URL: ${{ vars.SITE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @btb/scoring exec tsx src/cli.ts results-post

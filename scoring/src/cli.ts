@@ -1,7 +1,7 @@
 // Scoring job. Holds the resolver key only (RESOLVER_PRIVATE_KEY); never the owner key.
 //   tsx src/cli.ts tick                       scheduled: indexer, open, score, posts, relays
 //   tsx src/cli.ts open  --week N
-//   tsx src/cli.ts score --week N [--dry-run] [--approve 0xa,0xb]
+//   tsx src/cli.ts score --week N [--dry-run] [--exclude 0xa,0xb]
 //   tsx src/cli.ts settle --week N [--approved]
 //   tsx src/cli.ts relay-signed
 //   tsx src/cli.ts metrics
@@ -31,8 +31,8 @@ function resolverWallet() {
 }
 
 async function cmdScore(db: Db, week: number, dry: boolean) {
-  const approved = (opt("approve") ?? "").split(",").filter(Boolean);
-  const { results, hash } = await scoreWeek(client, db, week, { approved, takeSnapshot: !dry });
+  const excluded = (opt("exclude") ?? "").split(",").filter(Boolean);
+  const { results, hash } = await scoreWeek(client, db, week, { excluded, takeSnapshot: !dry });
   mkdirSync("results", { recursive: true });
   writeFileSync(`results/week-${week}${dry ? ".dry-run" : ""}.json`, canonicalJson(results));
   printResults(results, hash);
@@ -139,6 +139,19 @@ async function tick(db: Db) {
   void isTradingDay;
 }
 
+/** Friday (or holiday Thursday): score at the close, then post the results at their exact minute. */
+async function resultsPost(db: Db) {
+  const week = Math.max(1, weekIdAt(nowS()));
+  const s = weekSchedule(week);
+  const wait = (t: number) => new Promise((r) => setTimeout(r, Math.max(0, t * 1000 - Date.now())));
+  if (s.scoreAt - nowS() > 2 * 3600 || nowS() > s.resultsAt + 6 * 3600) return console.log(`week ${week}: not results time`);
+  await wait(s.scoreAt + 300);
+  const [w] = await db.query<{ results: unknown }>("select results from weeks where week = $1", [week]);
+  if (!w?.results) await cmdScore(db, week, false);
+  const tg = process.env.TELEGRAM_BOT_TOKEN, group = process.env.TELEGRAM_GROUP_CHAT_ID;
+  if (tg && group) console.log("results post:", await sendPost(db, "results", week, { site: process.env.NEXT_PUBLIC_SITE_URL ?? "", token: tg, group, waitMaxMs: 3 * 3600_000 }));
+}
+
 const db = await getDb();
 await migrate(db);
 const cmd = process.argv[2];
@@ -149,6 +162,7 @@ try {
   else if (cmd === "settle") await cmdSettle(db, weekArg());
   else if (cmd === "relay-signed") console.log("relayed", await cmdRelaySigned(db));
   else if (cmd === "metrics") await cmdMetrics(db);
+  else if (cmd === "results-post") await resultsPost(db);
   else { console.error("usage: cli.ts tick|open|score|settle|relay-signed|metrics"); process.exit(2); }
   process.exit(0);
 } catch (e) {
