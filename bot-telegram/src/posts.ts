@@ -15,13 +15,14 @@ export function postTime(kind: PostKind, week: number) {
 }
 
 /** Sends one scheduled post (once per week), waiting until its exact minute if it is close. */
-export async function sendPost(db: Db, kind: PostKind, week: number, opts: { site: string; token: string; group: string; waitMaxMs?: number; force?: boolean }) {
+export async function sendPost(db: Db, kind: PostKind, week: number, opts: { site: string; token: string; group: string; waitMaxMs?: number; maxLateMs?: number; force?: boolean }) {
   const key = `broadcast:${kind}:${week}`;
   const [done] = await db.query("select 1 from kv where key = $1", [key]);
   if (done && !opts.force) return "already sent";
   const at = postTime(kind, week);
   const ms = at * 1000 - Date.now();
   if (ms > (opts.waitMaxMs ?? 20 * 60_000)) return `not due (${Math.round(ms / 60_000)} min)`;
+  if (!opts.force && -ms > (opts.maxLateMs ?? 3 * 3600_000)) return "too late, skipped";
   if (kind === "results") {
     const t = await weekTable(db, week);
     if (t.phase !== "final") return "results not published yet";

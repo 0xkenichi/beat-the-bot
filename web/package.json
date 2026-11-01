@@ -12,6 +12,9 @@
   },
   "dependencies": {
     "@base-org/account": "2.5.13",
+    "@btb/bots": "workspace:*",
+    "@btb/indexer": "workspace:*",
+    "@btb/scoring": "workspace:*",
     "@btb/shared": "workspace:*",
     "@btb/telegram": "workspace:*",
     "grammy": "1.46.0",

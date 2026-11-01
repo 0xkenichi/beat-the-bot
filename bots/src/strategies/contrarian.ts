@@ -3,7 +3,7 @@ import { pct, type UniverseToken } from "@btb/shared";
 import { equalWeights, fiveDayReturns, type Targets } from "./common";
 
 /** Bottom three by five-trading-day return, equal weight. */
-export async function contrarian(client: PublicClient, universe: UniverseToken[], now: number): Promise<Targets> {
+export async function contrarian(client: PublicClient, universe: UniverseToken[], now: number, _env?: Record<string, string | undefined>): Promise<Targets> {
   const { returns } = await fiveDayReturns(client, universe, now);
   const picks = [...returns].sort((a, b) => a.ret - b.ret).slice(0, 3);
   return {

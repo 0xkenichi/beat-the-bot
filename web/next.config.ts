@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const config: NextConfig = {
-  transpilePackages: ["@btb/shared", "@btb/telegram"],
+  transpilePackages: ["@btb/shared", "@btb/telegram", "@btb/scoring", "@btb/bots", "@btb/indexer"],
   serverExternalPackages: ["@electric-sql/pglite", "postgres"],
   poweredByHeader: false,
   reactStrictMode: true,

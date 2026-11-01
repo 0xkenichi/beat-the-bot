@@ -17,6 +17,10 @@
     "@btb/indexer": "workspace:*",
     "@btb/shared": "workspace:*",
     "@btb/telegram": "workspace:*",
-    "viem": "2.57.7"
+    "viem": "2.57.7",
+    "@btb/bots": "workspace:*"
+  },
+  "exports": {
+    "./jobs": "./src/jobs.ts"
   }
 }

@@ -13,5 +13,8 @@
   "dependencies": {
     "@btb/shared": "workspace:*",
     "viem": "2.57.7"
+  },
+  "exports": {
+    ".": "./src/run.ts"
   }
 }

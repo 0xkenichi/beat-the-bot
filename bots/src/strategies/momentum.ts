@@ -3,7 +3,7 @@ import { pct, type UniverseToken } from "@btb/shared";
 import { equalWeights, fiveDayReturns, type Targets } from "./common";
 
 /** Top three by five-trading-day return, equal weight. */
-export async function momentum(client: PublicClient, universe: UniverseToken[], now: number): Promise<Targets> {
+export async function momentum(client: PublicClient, universe: UniverseToken[], now: number, _env?: Record<string, string | undefined>): Promise<Targets> {
   const { returns } = await fiveDayReturns(client, universe, now);
   const picks = [...returns].sort((a, b) => b.ret - a.ret).slice(0, 3);
   return {

@@ -57,6 +57,9 @@ importers:
 
   scoring:
     dependencies:
+      '@btb/bots':
+        specifier: workspace:*
+        version: link:../bots
       '@btb/indexer':
         specifier: workspace:*
         version: link:../indexer
@@ -90,6 +93,15 @@ importers:
       '@base-org/account':
         specifier: 2.5.13
         version: 2.5.13(@types/react@19.3.0)(react@19.3.1)(typescript@5.9.3)(zod@3.25.76)
+      '@btb/bots':
+        specifier: workspace:*
+        version: link:../bots
+      '@btb/indexer':
+        specifier: workspace:*
+        version: link:../indexer
+      '@btb/scoring':
+        specifier: workspace:*
+        version: link:../scoring
       '@btb/shared':
         specifier: workspace:*
         version: link:../shared

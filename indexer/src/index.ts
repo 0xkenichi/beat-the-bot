@@ -144,5 +144,7 @@ export async function runOnce(client: PublicClient, db: Db, log = console.log) {
   const stamp = new Date(Math.floor(Date.now() / 3_600_000) * 3_600_000);
   const [have] = await db.query("select 1 from nav_snapshots where taken_at = $1 limit 1", [stamp.toISOString()]);
   const snaps = have ? 0 : await snapshotAll(client, db, stamp);
-  log(`indexer: head ${head}, ${locks} locks, ${flows} flows, ${snaps} snapshots`);
+  const summary = `head ${head}, ${locks} locks, ${flows} flows, ${snaps} snapshots`;
+  log(`indexer: ${summary}`);
+  return summary;
 }

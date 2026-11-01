@@ -1,13 +1,15 @@
 import "server-only";
 import type { Address } from "viem";
-import { getDb, kvGet, type Db } from "@btb/shared/db";
+import { getDb, kvGet, migrate, type Db } from "@btb/shared/db";
 import { weekTable, type PriceMap } from "@btb/shared/league";
 import { UNIVERSE } from "@btb/shared/universe";
 import { makePublicClient } from "@btb/shared/rpc";
 import { latestRound } from "@btb/shared/prices";
 import { weekIdAt } from "@btb/shared/schedule";
 
-export const db = (): Promise<Db> => getDb();
+let ready: Promise<Db> | null = null;
+/** The database, with tables created on first use (create-if-not-exists, so it is safe on every cold start). */
+export const db = (): Promise<Db> => (ready ??= getDb().then(async (d) => { await migrate(d); return d; }).catch((e) => { ready = null; throw e; }));
 export const client = () => makePublicClient();
 
 export type TradeMode = "live" | "view-only";

@@ -21,6 +21,7 @@ Every transaction the app, the bots and the scoring job send carries the app's B
 | `web/` | Next.js server rendering plain HTML with small scripts (2–9 KB per page). Passkey sign-in with an app sub-account, sponsored swaps, free play, bot pages, results. |
 | `bot-telegram/` | grammY bot: `/start`, `/link`, `/trade`, `/pick`, `/table`, `/bots`, `/week`, and the weekly posts. |
 | `scripts/` | `verify-chain` (live checks), `build-universe`, `live/b20-hold-and-send` (eth_simulateV1 test), `admin`. |
+| Scheduler | `/api/cron/tick` on a separate jobs deployment, called every 5 minutes by a free external cron; runs the indexer, scoring, posts and bots. |
 
 Swaps go through the stocks' deepest USDC pools on Aerodrome (concentrated liquidity), quoted exactly from the pool. Prices come from Coinbase's Chainlink feeds on Base. Coinbase tokenized stocks are B20 precompiles, so the hold-and-send test runs on Base's own node with `eth_simulateV1`; a local fork cannot execute them.
 

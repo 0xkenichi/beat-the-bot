@@ -1,6 +1,6 @@
 # Runbook
 
-Everything below that touches a key, an account or money is done by Kenichi. Keys live only in his `.env`, in GitHub Actions secrets and in Vercel env. Nothing secret is ever committed.
+Everything below that touches a key, an account or money is done by Kenichi. Keys live only in his `.env` and in the jobs project's Vercel env. Nothing secret is ever committed.
 
 ## One-time setup, in the order it is needed
 
@@ -18,7 +18,7 @@ Everything below that touches a key, an account or money is done by Kenichi. Key
 | 10 | **Weeks onchain:** `pnpm admin set-weeks 1 4` (owner key). | Kenichi runs | terminal |
 | 11 | **Bots:** `pnpm --filter @btb/bots exec tsx src/cli.ts init`, then `pnpm admin register-agents` (ERC-8004 identities and roster entries, from each bot wallet). | Kenichi runs | terminal |
 | 12 | **Telegram:** BotFather → `/newbot`. Token to `TELEGRAM_BOT_TOKEN`, username to `TELEGRAM_BOT_USERNAME`, any random string to `TELEGRAM_WEBHOOK_SECRET`. Make a group, add the bot as admin, put the group's chat id in `TELEGRAM_GROUP_CHAT_ID`. Then `pnpm admin telegram-webhook`. | Kenichi | Telegram |
-| 13 | **Scheduler:** GitHub → repo → Settings → Secrets and variables → Actions. Secrets: `DATABASE_URL`, `BASE_RPC_URL`, `RESOLVER_PRIVATE_KEY`, `BOT_MOMENTUM_PRIVATE_KEY`, `BOT_CONTRARIAN_PRIVATE_KEY`, `BOT_STEADY_PRIVATE_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_GROUP_CHAT_ID`, optional `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`. Variables: `SITE_URL`, and `SCHEDULE_ENABLED` = `true` once everything else is set (the scheduled jobs stay off until then). GitHub Actions must be usable on the account: on 1 Nov it reported the account locked for a billing issue. | Kenichi | GitHub |
+| 13 | **Scheduler** (free, no GitHub Actions needed): see *The scheduler* below. | Kenichi | Vercel + cron-job.org |
 | 14 | **Steady's model (optional):** any OpenAI-compatible free tier. Without it, Steady holds every stock equally and says so on its page. | Kenichi | provider of choice |
 | 15 | **Prizes for week 1:** `pnpm admin fund-prizes --week 1 --real 40 --paper 10 --token NVDA` (sponsor key: buys the stock, funds the pool). | Kenichi runs | terminal |
 | 16 | **Pidgin copy:** `web/lib/copy.ts` (`pcm`) and `bot-telegram/src/pidgin.ts`. Missing lines fall back to English. | Kenichi | editor |
@@ -36,18 +36,29 @@ forge script script/Deploy.s.sol --rpc-url $BASE_RPC_URL --private-key $OWNER_PR
 cd .. && pnpm admin deployments
 ```
 
+## The scheduler
+
+One protected route, `/api/cron/tick`, does everything that is due each time it is called: posts, prices, paper locks, deposits and withdrawals, hourly snapshots, opening prices, scoring, signed-lock relays, settlement (from week 3, if turned on) and one house bot per call. A free external cron calls it every 5 minutes. Every post time is on a 5-minute mark, so posts go out on their exact minute.
+
+1. **Two Vercel projects from the same repo** (both root directory `web`):
+   - `beat-the-bot`: the public site. No private keys. Env: `NEXT_PUBLIC_SITE_URL`, `SESSION_SECRET`, `BASE_RPC_URL`, `DATABASE_URL`, `PAYMASTER_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `TELEGRAM_WEBHOOK_SECRET`.
+   - `beat-the-bot-jobs`: runs the schedule. Env: `JOBS_ENABLED=1`, `CRON_SECRET` (random, 32+ characters), `NEXT_PUBLIC_SITE_URL` (the public site's URL), `BASE_RPC_URL`, `DATABASE_URL`, `RESOLVER_PRIVATE_KEY`, `BOT_MOMENTUM_PRIVATE_KEY`, `BOT_CONTRARIAN_PRIVATE_KEY`, `BOT_STEADY_PRIVATE_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_GROUP_CHAT_ID`, optional `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL`.
+   The route answers 404 anywhere `JOBS_ENABLED` is not `1`, so the public site never runs jobs or holds those keys. (One project with everything also works, at the cost of that separation.)
+2. **cron-job.org** (free account): Create cronjob → URL `https://<jobs project>.vercel.app/api/cron/tick` → every 5 minutes → Advanced → Headers → `Authorization: Bearer <CRON_SECRET>` → Save. The response body lists what each call did.
+3. To run a pass by hand: `pnpm --filter @btb/scoring tick` (uses your `.env`).
+
 ## The weekly cycle (automatic)
 
-| When (WAT, Nov–Mar) | What runs | Workflow |
-|---|---|---|
-| Every 15 minutes | Prices, paper locks, deposits/withdrawals, hourly snapshots | `tick` |
-| Monday 01:00 | Entries open (PickBook window) | onchain |
-| Monday 06:00 | "Week N is open" post | `tick` |
-| Monday 14:30 | "One hour left" post | `tick` |
-| Monday 15:30 (US open) | Entries close; opening prices and snapshot recorded; bots rebalance | `tick`, `bots` |
-| Friday 22:00 (US close) | Closing prices, final snapshot, scoring, results file and hash | `results` |
-| Friday 22:30 | Results post and personal messages | `results` |
-| After Kenichi's check | Settlement: prizes pushed to winners onchain | `settle` (by hand in weeks 1–2) |
+| When (WAT, Nov–Mar) | What happens |
+|---|---|
+| Every 5 minutes | Prices, paper locks, deposits/withdrawals; a snapshot of every wallet each hour |
+| Monday 01:00 | Entries open (PickBook window) |
+| Monday 06:00 | "Week N is open" post |
+| Monday 14:30 | "One hour left" post |
+| Monday 15:30 (US open) | Entries close; opening prices and snapshot recorded; the three bots rebalance over the next three calls |
+| Friday 22:05 (US close + 5 min) | Closing prices, final snapshot, scoring, results file and hash |
+| Friday 22:30 | Results post and personal messages |
+| After Kenichi's check | Settlement: prizes pushed to winners onchain (by hand in weeks 1–2) |
 
 Holiday weeks move automatically (Thanksgiving, Christmas, New Year, MLK Day, Presidents Day, Good Friday). From 15 Mar 2027 US daylight saving moves everything one hour earlier in WAT.
 
@@ -55,7 +66,7 @@ Holiday weeks move automatically (Thanksgiving, Christmas, New Year, MLK Day, Pr
 
 1. Read the results on `/week/N` and in the Telegram post.
 2. Weeks 1–2: check the winners are different people. If two winning wallets are one person, re-score without them: `pnpm --filter @btb/scoring exec tsx src/cli.ts score --week N --exclude 0x…`.
-3. GitHub → Actions → `settle` → week N, tick the confirmation box → Run. Or locally: `pnpm --filter @btb/scoring settle --week N --approved`.
+3. Run `pnpm --filter @btb/scoring settle --week N --approved` (resolver key from your `.env`).
 4. From week 3 you can let it settle itself: `pnpm admin auto-settle on`.
 
 A payout the token refuses (for example a transfer policy) is kept in the pool as `owed` and the winner claims it with `withdraw`.
