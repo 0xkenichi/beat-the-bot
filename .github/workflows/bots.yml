@@ -11,6 +11,8 @@ permissions:
   contents: read
 jobs:
   rebalance:
+    # Off until Kenichi sets the repository variable SCHEDULE_ENABLED=true (after secrets are in place).
+    if: ${{ vars.SCHEDULE_ENABLED == 'true' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
