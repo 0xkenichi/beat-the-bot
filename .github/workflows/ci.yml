@@ -1,8 +1,10 @@
+# Manual only for now: GitHub Actions cannot start jobs on this account (billing lock, 1 Nov 2026), and every push
+# was reported as a failure without running a step. Once billing is cleared, restore the automatic trigger:
+#   on: { push: { branches: [main] }, pull_request: {}, workflow_dispatch: {} }
+# The same steps pass locally: pnpm install --frozen-lockfile, forge test, pnpm test, typecheck, web build.
 name: ci
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
