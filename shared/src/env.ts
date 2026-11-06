@@ -6,6 +6,7 @@ import { resolve } from "node:path";
  * the platform's secret store instead. The file is read by Node at runtime only; it is never committed.
  */
 export function loadEnv() {
+  if (process.env.BTB_NO_DOTENV === "1") return; // rehearsals and tests: everything comes from the environment
   for (const p of [resolve(process.cwd(), ".env"), resolve(process.cwd(), "../.env")]) {
     if (existsSync(p)) {
       process.loadEnvFile(p);

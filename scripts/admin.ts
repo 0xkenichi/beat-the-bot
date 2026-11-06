@@ -28,6 +28,9 @@ const leagueChain = contractsChainId();
 const [cmd, ...args] = process.argv.slice(2);
 const opt = (n: string) => (args.includes(`--${n}`) ? args[args.indexOf(`--${n}`) + 1] : undefined);
 const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+// Overridable so a rehearsal (scripts/rehearse) never touches the real files.
+const DEPLOYMENTS_FILE = process.env.DEPLOYMENTS_FILE ?? "shared/src/deployments.json";
+const BROADCAST_DIR = process.env.FOUNDRY_BROADCAST ?? "contracts/broadcast";
 
 /** A key's wallet on the league chain (Base Sepolia on the $0 path), with the Builder Code on every transaction. */
 const leagueWallet = (envName: string) => makeContractsWallet(need(envName) as Hex);
@@ -81,15 +84,15 @@ async function status() {
 async function deployments() {
   const chain = Number(opt("chain") ?? leagueChain);
   if (!(chain in CHAINS)) throw new Error(`--chain must be one of ${Object.keys(CHAINS).join(", ")}`);
-  const f = `contracts/broadcast/Deploy.s.sol/${chain}/run-latest.json`;
+  const f = `${BROADCAST_DIR}/Deploy.s.sol/${chain}/run-latest.json`;
   const j = JSON.parse(readFileSync(f, "utf8")) as { transactions: { contractName: string; contractAddress: Address; hash: Hex }[]; receipts: { blockNumber: string }[] };
   const byName = Object.fromEntries(j.transactions.map((t) => [t.contractName, t.contractAddress]));
-  const d = JSON.parse(readFileSync("shared/src/deployments.json", "utf8"));
+  const d = JSON.parse(readFileSync(DEPLOYMENTS_FILE, "utf8"));
   const n = d.networks[chain];
   n.pickBook = byName.PickBook; n.prizePool = byName.PrizePool; n.agentRoster = byName.AgentRoster;
   n.deployedBlock = Math.min(...j.receipts.map((r) => Number(r.blockNumber)));
   d.contractsChain = chain;
-  writeFileSync("shared/src/deployments.json", JSON.stringify(d, null, 2) + "\n");
+  writeFileSync(DEPLOYMENTS_FILE, JSON.stringify(d, null, 2) + "\n");
   console.log(`${CHAINS[chain as keyof typeof CHAINS].name}:`, n);
 }
 
@@ -158,7 +161,7 @@ async function registerAgents() {
   const { agentRoster: roster, erc8004Identity, chainId } = contracts();
   if (!roster || !site) throw new Error("Deploy AgentRoster and set NEXT_PUBLIC_SITE_URL first");
   const termsHash = keccak256(toBytes(readFileSync("docs/legal/agent-terms.md", "utf8")));
-  const d = JSON.parse(readFileSync("shared/src/deployments.json", "utf8"));
+  const d = JSON.parse(readFileSync(DEPLOYMENTS_FILE, "utf8"));
   const n = d.networks[chainId];
   const db = await getDb(); await migrate(db);
   for (const a of HOUSE_AGENTS) {
@@ -176,7 +179,7 @@ async function registerAgents() {
     await db.query("update agents set erc8004_id = $2, identity_chain = $3 where id = $1", [a.id, agentId.toString(), chainId]);
     console.log(`${a.name}: ERC-8004 agent #${agentId} ${explorerTx(chainId, regTx)}, roster ${explorerTx(chainId, rTx)}`);
   }
-  writeFileSync("shared/src/deployments.json", JSON.stringify(d, null, 2) + "\n");
+  writeFileSync(DEPLOYMENTS_FILE, JSON.stringify(d, null, 2) + "\n");
 }
 
 async function flagCmd(key: string, on: string, off: string) {

@@ -25,7 +25,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const since = funded && last ? last.nav_usd / a.start_nav! - 1 : weekly.length ? weekly.reduce((g, w) => g * (1 + w.ret), 1) - 1 : null;
   const best = weekly.length ? weekly.reduce((x, y) => (y.ret > x.ret ? y : x)) : null;
   const worst = weekly.length ? weekly.reduce((x, y) => (y.ret < x.ret ? y : x)) : null;
-  const note = await kvGet<{ source: string; note: string } | null>(await db(), `bot_note:${a.id}:${weekIdAt(Math.floor(Date.now() / 1000))}`, null);
+  const note = await kvGet<{ source: string; note: string } | null>(await db(), `bot_note:${a.id}:${Math.max(1, weekIdAt(Math.floor(Date.now() / 1000)))}`, null);
   const identity = network().agentIdentities[a.id] ?? (a.erc8004_id ? { erc8004Id: a.erc8004_id, registerTx: null } : undefined);
   const idChain = (a.identity_chain ?? contractsChainId()) as ContractsChainId;
   const cChain = contractsChainId();
@@ -62,6 +62,6 @@ ${trades.map((tr) => {
 })}</tbody></table>`}</section>
 <section class="card small"><h2 style="margin-top:0">Identity and rules</h2>
 <p>${a.house ? "House bot" : "Entered by an outside builder"} · ERC-8004 identity: ${identity ? html`agent #${identity.erc8004Id} on ${CHAINS[idChain].name}${proof({ address: CHAINS[idChain].erc8004Identity, label: "registry", chain: idChain })}${identity.registerTx ? proof({ tx: identity.registerTx, label: "registration", chain: idChain }) : ""}` : "registers before week 1"} · <a href="${cardUrl}">agent card</a> · <a href="/api/agents/${a.id}">data</a></p>
-${a.house ? (funded ? html`<p class="muted">Guardrails in code: only this week's stocks; at most 50% in one name; 5% kept in USDC; 1% slippage cap; no trade if the pool is more than 1% off the Chainlink price; trades only in US market hours; pauses itself below half its starting value.</p>` : html`<p class="muted">Each Monday before the US open it locks three of the week's stocks onchain, from its own wallet, and is scored on the same Chainlink prices as everyone's picks. When it is funded, it trades real stocks instead.</p>`) : html`<p class="muted">Outside agents trade from their own wallet with their builder's money and accept the <a href="/agent-terms">agent terms</a> onchain. They are scored on the same prices and schedule; agents compete for the record, prizes go to people.</p>`}</section>`,
+${a.house ? (funded ? html`<p class="muted">Guardrails in code: only this week's stocks; at most 50% in one name; 5% kept in USDC; 1% slippage cap; no trade if the pool is more than 1% off the Chainlink price; trades only in US market hours; pauses itself below half its starting value.</p>` : html`<p class="muted">Each Monday before the US open it locks three of the week's stocks onchain, from its own wallet, and is scored on the same Chainlink prices as everyone's picks. When it is funded, it trades real stocks instead.</p>`) : html`<p class="muted">Outside agents enter from their own wallet and accept the <a href="/agent-terms">agent terms</a> onchain. They pick, and may trade with their builder's money, on the same prices and schedule; agents compete for the record, prizes go to people.</p>`}</section>`,
   });
 }

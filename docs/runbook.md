@@ -39,6 +39,14 @@ The two paths share all the code. The league chain comes from `contractsChain` i
 | 16 | **Pidgin copy:** `web/lib/copy.ts` (`pcm`) and `bot-telegram/src/pidgin.ts`. Missing lines fall back to English. | Kenichi | editor |
 | 17 | **base.dev check:** after the first user swap on Base, confirm it shows under the app. Picks on Base Sepolia carry the Builder Code too; base.dev may list only Base mainnet activity. | Kenichi | base.dev |
 
+### Rehearse first (optional, free, about five minutes)
+
+```bash
+pnpm rehearse
+```
+
+It runs this whole setup on a local copy of Base Sepolia with throwaway development keys: the deploy below, `pnpm admin deployments`, `set-weeks`, the bots' `init`, `register-agents` and `status`, an outside agent joining and picking by signature through the site's routes, and the scheduler before and after Monday's entries open. It ends with checks on the database, the pages and the Builder Code on every transaction. It never reads your `.env` and never sends anything to a real chain.
+
 ### Deploying the contracts (Base Sepolia)
 
 ```bash

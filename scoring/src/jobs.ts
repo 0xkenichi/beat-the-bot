@@ -56,20 +56,23 @@ export async function settleWeek(_client: PublicClient, db: Db, week: number, o:
 }
 
 /** Submits free-play picks that players signed while gas sponsorship was down (PickBook.lockFor). */
-export async function relaySigned(_client: PublicClient, db: Db, env: Env = process.env) {
+export async function relaySigned(_client: PublicClient, db: Db, env: Env = process.env, now = nowS()) {
   const client = makeContractsClient(env);
   const pickBook = contracts(env).pickBook;
   if (!pickBook || !env.RESOLVER_PRIVATE_KEY) return 0;
-  const rows = await db.query<{ week: number; wallet: string; picks: { tokenIndex: number; weightBps: number }[]; deadline: string; signature: string }>(
+  const pending = await db.query<{ week: number; wallet: string; picks: { tokenIndex: number; weightBps: number }[]; deadline: string; signature: string }>(
     "select week, wallet, picks, deadline, signature from signed_locks where relayed_tx is null and error is null and deadline > $1",
-    [nowS()],
+    [now],
   );
+  // Picks signed before their week opens wait here until it does (PickBook would refuse them before then).
+  const rows = pending.filter((r) => { const w = weekSchedule(r.week); return now >= w.entryOpen && now < w.entryClose; });
   if (!rows.length) return 0;
   const wallet = resolverWallet(env);
   for (const r of rows) {
     try {
       const hash = await wallet.writeContract({ address: pickBook, abi: pickBookAbi, functionName: "lockFor", args: [r.wallet as Address, r.week, r.picks as never, BigInt(r.deadline), r.signature as Hex] });
-      await client.waitForTransactionReceipt({ hash });
+      const rc = await client.waitForTransactionReceipt({ hash });
+      if (rc.status !== "success") throw new Error(`lockFor reverted: ${hash}`);
       await db.query("update signed_locks set relayed_tx = $3 where week = $1 and wallet = $2", [r.week, r.wallet, hash]);
     } catch (e) {
       await db.query("update signed_locks set error = $3 where week = $1 and wallet = $2", [r.week, r.wallet, (e as Error).message.slice(0, 300)]);
@@ -82,13 +85,13 @@ export async function relaySigned(_client: PublicClient, db: Db, env: Env = proc
  * Submits agents' signed registrations with AgentRoster.registerFor (the resolver is the registrar). Used by agents
  * whose wallets cannot send transactions on the contracts chain; their identity was checked when they signed.
  */
-export async function relayRegistrations(db: Db, env: Env = process.env) {
+export async function relayRegistrations(db: Db, env: Env = process.env, now = nowS()) {
   const roster = contracts(env).agentRoster;
   if (!roster || !env.RESOLVER_PRIVATE_KEY) return 0;
   const client = makeContractsClient(env);
   const rows = await db.query<{ wallet: string; erc8004_id: string; identity_chain: number; metadata_uri: string; deadline: string; signature: string }>(
     "select wallet, erc8004_id, identity_chain, metadata_uri, deadline, signature from signed_registrations where relayed_tx is null and error is null and deadline > $1",
-    [nowS()],
+    [now],
   );
   if (!rows.length) return 0;
   const wallet = resolverWallet(env);
@@ -164,8 +167,8 @@ export async function runTick(client: PublicClient, db: Db, o: { env?: Env; log?
     // 5. From week 3, settle automatically if Kenichi turned it on.
     if (w?.results && !w.settle_txs && week >= 3 && env.RESOLVER_PRIVATE_KEY && (await kvGet(db, "auto_settle", false))) await step("settle", () => settleWeek(client, db, week, { env, log }));
     // 6. Signed free-play picks (before entries close) and signed agent entries.
-    if (t < s.entryClose && env.RESOLVER_PRIVATE_KEY) await step("relay signed locks", async () => (await relaySigned(client, db, env)) || null);
-    if (env.RESOLVER_PRIVATE_KEY) await step("relay signed agent entries", async () => (await relayRegistrations(db, env)) || null);
+    if (env.RESOLVER_PRIVATE_KEY) await step("relay signed locks", async () => (await relaySigned(client, db, env, t)) || null);
+    if (env.RESOLVER_PRIVATE_KEY) await step("relay signed agent entries", async () => (await relayRegistrations(db, env, t)) || null);
     // 7. One house bot per tick: picks during the entry window (no-cost setup) or trades after the US open.
     if (HOUSE_AGENTS.some((a) => env[a.keyEnv]) && botsDue(t, env)) {
       await step("bots", async () => {
