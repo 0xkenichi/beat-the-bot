@@ -1,5 +1,5 @@
 import { parseAbi, parseEventLogs, type Address, type PublicClient } from "viem";
-import { ADDR, UNIVERSE, latestRound, valueUsd, valueWallet, pickBookAbi, contracts, DEPLOYMENTS, b20Abi } from "@btb/shared";
+import { ADDR, UNIVERSE, latestRound, valueUsd, valueWallet, pickBookAbi, agentRosterAbi, contracts, DEPLOYMENTS, b20Abi } from "@btb/shared";
 import { kvGet, kvSet, type Db } from "@btb/shared/db";
 
 const transferAbi = parseAbi(["event Transfer(address indexed from, address indexed to, uint256 value)"]);
@@ -60,6 +60,35 @@ export async function indexLocks(client: PublicClient, db: Db, head: bigint) {
   }
   await kvSet(db, "cursor:locks", String(head + 1n));
   return events.length;
+}
+
+/**
+ * AgentRoster registrations -> agents. House bots are already in the table (matched by wallet); outside agents get
+ * their name and strategy from the profile they gave the kit. ActiveSet (moderation) pauses or restores an agent.
+ */
+export async function indexRoster(client: PublicClient, db: Db, head: bigint) {
+  const roster = contracts().agentRoster;
+  if (!roster) return 0;
+  const from = BigInt(await kvGet<string>(db, "cursor:roster", String(DEPLOYMENTS.deployedBlock ?? head - 1000n)));
+  if (from > head) return 0;
+  const raw = await getLogsChunked(client, { address: roster, topics: [] }, from, head);
+  const logs = raw.map((l) => ({ ...l, blockNumber: BigInt(l.blockNumber), logIndex: Number(l.logIndex) })) as never;
+  let n = 0;
+  for (const e of parseEventLogs({ abi: agentRosterAbi, logs, eventName: "Registered" })) {
+    const wallet = e.args.wallet.toLowerCase();
+    const [p] = await db.query<{ name: string; strategy: string }>("select name, strategy from agent_profiles where wallet = $1", [wallet]);
+    await db.query(
+      `insert into agents (id, name, strategy, wallet, house, erc8004_id, roster_id) values ($1, $2, $3, $4, false, $5, $6)
+       on conflict (wallet) do update set erc8004_id = excluded.erc8004_id, roster_id = excluded.roster_id`,
+      [`agent-${e.args.agentId}`, p?.name ?? `Agent #${e.args.agentId}`, p?.strategy ?? "An AI agent entered by its builder.", wallet, e.args.erc8004Id.toString(), Number(e.args.agentId)],
+    );
+    n++;
+  }
+  for (const e of parseEventLogs({ abi: agentRosterAbi, logs, eventName: "ActiveSet" })) {
+    await db.query("update agents set paused = $2, paused_reason = $3 where roster_id = $1 and not house", [Number(e.args.agentId), !e.args.active, e.args.active ? null : "Removed from the table by the organiser"]);
+  }
+  await kvSet(db, "cursor:roster", String(head + 1n));
+  return n;
 }
 
 /**
@@ -140,11 +169,12 @@ export async function runOnce(client: PublicClient, db: Db, log = console.log) {
   const head = await client.getBlockNumber();
   await cachePrices(client, db);
   const locks = await indexLocks(client, db, head);
+  const agents = await indexRoster(client, db, head);
   const flows = await indexFlows(client, db, head);
   const stamp = new Date(Math.floor(Date.now() / 3_600_000) * 3_600_000);
   const [have] = await db.query("select 1 from nav_snapshots where taken_at = $1 limit 1", [stamp.toISOString()]);
   const snaps = have ? 0 : await snapshotAll(client, db, stamp);
-  const summary = `head ${head}, ${locks} locks, ${flows} flows, ${snaps} snapshots`;
+  const summary = `head ${head}, ${locks} locks, ${agents} agents, ${flows} flows, ${snaps} snapshots`;
   log(`indexer: ${summary}`);
   return summary;
 }

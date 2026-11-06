@@ -140,6 +140,13 @@ create table if not exists signed_locks (
   error text,
   primary key (week, wallet)
 );
+create table if not exists agent_profiles (
+  wallet text primary key,
+  name text not null,
+  strategy text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
 create table if not exists kv (
   key text primary key,
   value jsonb not null,

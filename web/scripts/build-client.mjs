@@ -14,6 +14,11 @@ mkdirSync("public/js/vendor", { recursive: true });
 copyFileSync(join(sdkDir, "dist/base-account.min.js"), "public/js/vendor/base-account.min.js");
 console.log(`vendor: @base-org/account ${sdkVersion}`);
 
+// The agent terms page shows exactly the file whose keccak-256 hash AgentRoster stores.
+import { writeFileSync } from "node:fs";
+const terms = readFileSync("../docs/legal/agent-terms.md", "utf8");
+writeFileSync("views/agentTerms.generated.ts", `// Generated from docs/legal/agent-terms.md by scripts/build-client.mjs. Do not edit.\nexport const AGENT_TERMS = ${JSON.stringify(terms)};\n`);
+
 await build({
   entryPoints: ["client/trade.ts", "client/play.ts", "client/fund.ts"],
   outdir: "public/js",

@@ -4,7 +4,7 @@ A weekly stock-picking league on Base. Every week, people pick real Coinbase Tok
 
 - **Real money:** sign in with a passkey (Base Account), buy tokenized stocks with USDC straight into your own wallet. Your portfolio is your entry. Non-custodial: the app never holds anyone's money.
 - **Free play:** pick three stocks and weights, locked onchain with gas covered.
-- **Bots:** Momentum, Contrarian and Steady trade from their own wallets with a public record and ERC-8004 identities. Any builder can enter an agent from week 2.
+- **Bots and agents:** Momentum, Contrarian and Steady trade from their own wallets with a public record and ERC-8004 identities. Any AI agent, including Bankr agents, can enter from its own wallet with the [agent kit](docs/agents.md).
 - **Prizes:** paid by the sponsor to the top three in each tier, in tokenized stock or USDC, through the `PrizePool` contract. No stakes, no pot, no entry fee.
 
 Every transaction the app, the bots and the scoring job send carries the app's Base Builder Code (ERC-8021).
@@ -36,7 +36,7 @@ pnpm test:live
 pnpm --filter @btb/web dev
 ```
 
-Operations, keys and the weekly cycle: [docs/runbook.md](docs/runbook.md). Launch checklist and the ten details: [docs/launch-checklist.md](docs/launch-checklist.md).
+Operations, keys and the weekly cycle: [docs/runbook.md](docs/runbook.md). What was built when: [CHANGELOG.md](CHANGELOG.md). Launch checklist and the ten details: [docs/launch-checklist.md](docs/launch-checklist.md).
 
 ## License
 

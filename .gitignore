@@ -21,3 +21,4 @@ web/public/js/
 .claude/
 scoring/results/
 *.tsbuildinfo
+web/views/agentTerms.generated.ts

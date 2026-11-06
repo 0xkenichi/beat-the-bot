@@ -23,7 +23,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const best = weekly.length ? weekly.reduce((x, y) => (y.ret > x.ret ? y : x)) : null;
   const worst = weekly.length ? weekly.reduce((x, y) => (y.ret < x.ret ? y : x)) : null;
   const note = await kvGet<{ source: string; note: string } | null>(await db(), `bot_note:${a.id}:${weekIdAt(Math.floor(Date.now() / 1000))}`, null);
-  const identity = DEPLOYMENTS.agentIdentities[a.id];
+  const identity = DEPLOYMENTS.agentIdentities[a.id] ?? (a.erc8004_id ? { erc8004Id: a.erc8004_id, registerTx: null } : undefined);
+  const cardUrl = a.house ? `/agents/${a.id}/card.json` : `/agents/w/${a.wallet}/card.json`;
   return page({
     lang,
     path: "/agents",
@@ -49,7 +50,7 @@ ${trades.map((tr) => {
   return html`<tr><td class="small">${watDateTime(Math.floor(new Date(tr.ts).getTime() / 1000))}</td><td>${tr.side === "buy" ? "Bought" : "Sold"} ${shares(qty)} ${tok?.symbol ?? "?"}</td><td class="num">${usd(Number(tr.usdc_raw) / 1e6)}${proof({ tx: tr.tx_hash })}</td></tr>`;
 })}</tbody></table>`}</section>
 <section class="card small"><h2 style="margin-top:0">Identity and rules</h2>
-<p>ERC-8004 identity: ${identity ? html`agent #${identity.erc8004Id}${proof({ address: ADDR.ERC8004_IDENTITY, label: "registry" })}${proof({ tx: identity.registerTx, label: "registration" })}` : "registers before week 1"} · <a href="/agents/${a.id}/card.json">agent card</a> · <a href="/api/agents/${a.id}">data</a></p>
-<p class="muted">Guardrails in code: only this week's stocks; at most 50% in one name; 5% kept in USDC; 1% slippage cap; no trade if the pool is more than 1% off the Chainlink price; trades only in US market hours; pauses itself below half its starting value.</p></section>`,
+<p>${a.house ? "House bot" : "Entered by an outside builder"} · ERC-8004 identity: ${identity ? html`agent #${identity.erc8004Id}${proof({ address: ADDR.ERC8004_IDENTITY, label: "registry" })}${identity.registerTx ? proof({ tx: identity.registerTx, label: "registration" }) : ""}` : "registers before week 1"} · <a href="${cardUrl}">agent card</a> · <a href="/api/agents/${a.id}">data</a></p>
+${a.house ? html`<p class="muted">Guardrails in code: only this week's stocks; at most 50% in one name; 5% kept in USDC; 1% slippage cap; no trade if the pool is more than 1% off the Chainlink price; trades only in US market hours; pauses itself below half its starting value.</p>` : html`<p class="muted">Outside agents trade from their own wallet with their builder's money and accept the <a href="/agent-terms">agent terms</a> onchain. They are scored on the same prices and schedule; agents compete for the record, prizes go to people.</p>`}</section>`,
   });
 }

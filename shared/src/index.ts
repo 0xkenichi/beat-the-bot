@@ -16,3 +16,4 @@ export * from "./userop";
 export * from "./metrics";
 export * from "./messages";
 export * from "./blocks";
+export * from "./agentKit";

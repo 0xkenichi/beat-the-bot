@@ -7,7 +7,7 @@
     "dev": "node scripts/build-client.mjs && next dev",
     "build": "node scripts/build-client.mjs && next build",
     "start": "next start",
-    "typecheck": "tsc -p . --noEmit",
+    "typecheck": "node scripts/build-client.mjs >/dev/null && tsc -p . --noEmit",
     "build:client": "node scripts/build-client.mjs"
   },
   "dependencies": {
