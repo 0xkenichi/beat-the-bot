@@ -24,7 +24,7 @@ describe("Builder Code (ERC-8021 schema 0)", () => {
 });
 
 describe("league calendar", () => {
-  it("week 1 starts Monday 9 Nov 2026", () => {
+  it("week 1 starts Monday 9 Nov 2026 (the repo's default season start)", () => {
     expect(GENESIS).toBe(utc("2026-11-09T00:00:00Z"));
     const w = weekSchedule(1);
     expect(w.entryClose).toBe(utc("2026-11-09T14:30:00Z")); // 15:30 WAT

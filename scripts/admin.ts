@@ -1,6 +1,7 @@
 // Admin commands for Kenichi. Keys are read from the repo-root .env (never committed, never printed).
 //   pnpm admin new-wallets            create resolver, sponsor and 3 bot keys in .env; prints addresses only
 //   pnpm admin status                 what is configured, deployed and funded (league chain and Base)
+//   pnpm admin season [--start 2026-11-16]   week 1 = that Monday (default: the coming Monday); before the deploy
 //   pnpm admin deployments [--chain 84532]   copy addresses from the last forge deploy into shared/src/deployments.json
 //   pnpm admin set-weeks 1 4          owner: write week schedules and the universe to PickBook
 //   pnpm admin fund-prizes --week 1 --real 40 --paper 10 [--token NVDA]   sponsor: buy the prize stock, fund the pool
@@ -79,6 +80,24 @@ async function status() {
   for (const n of ["DATABASE_URL", "BASE_RPC_URL", "CONTRACTS_RPC_URL", "PAYMASTER_URL", "PAYMASTER_URL_SEPOLIA", "SESSION_SECRET", "TELEGRAM_BOT_TOKEN", "TELEGRAM_GROUP_CHAT_ID", "LLM_API_KEY", "NEXT_PUBLIC_SITE_URL"]) {
     console.log(`${n.padEnd(26)} ${process.env[n] ? "set" : "not set"}`);
   }
+}
+
+async function season() {
+  const d = JSON.parse(readFileSync(DEPLOYMENTS_FILE, "utf8"));
+  if (Object.values(d.networks as Record<string, { prizePool: string | null }>).some((n) => n.prizePool)) {
+    throw new Error("PrizePool is already deployed with its season start; changing it means a new deploy.");
+  }
+  const start = opt("start");
+  let t: number;
+  if (start) t = Date.parse(`${start}T00:00:00Z`) / 1000;
+  else {
+    const today = Math.floor(Date.now() / 86_400_000) * 86_400;
+    t = today + (((8 - new Date(today * 1000).getUTCDay()) % 7) || 7) * 86_400; // the coming Monday
+  }
+  if (!Number.isFinite(t) || new Date(t * 1000).getUTCDay() !== 1) throw new Error("--start must be a Monday, like 2026-11-16");
+  d.genesis = t;
+  writeFileSync(DEPLOYMENTS_FILE, JSON.stringify(d, null, 2) + "\n");
+  console.log(`Week 1 starts ${new Date(t * 1000).toUTCString()} (genesis ${t}). Entries open then and close at that day's US open.`);
 }
 
 async function deployments() {
@@ -201,7 +220,7 @@ async function telegramWebhook() {
 }
 
 const cmds: Record<string, () => Promise<void>> = {
-  "new-wallets": newWallets, status, deployments, "set-weeks": setWeeks, "fund-prizes": fundPrizes, "register-agents": registerAgents,
+  "new-wallets": newWallets, status, season, deployments, "set-weeks": setWeeks, "fund-prizes": fundPrizes, "register-agents": registerAgents,
   "kill-switch": () => flagCmd("trade_mode", "view-only", "live"), "auto-settle": () => flagCmd("auto_settle", true as never, false as never),
   "telegram-webhook": telegramWebhook,
 };

@@ -1,11 +1,16 @@
+import deployments from "./deployments.json";
+
 /**
- * League calendar. Week 1 starts Monday 9 Nov 2026 00:00 UTC. Times follow the New York market clock, so
+ * League calendar. Week 1 starts on the Monday in deployments.json `genesis` (00:00 UTC), set with
+ * `pnpm admin season` before the contracts are deployed; PrizePool is deployed with the same value. Times follow the
+ * New York market clock, so
  * they move with US daylight saving: from 2 Nov 2026 to 13 Mar 2027 the US open is 14:30 UTC (15:30 WAT)
  * and the close 21:00 UTC (22:00 WAT).
  *  - Entries open Monday 00:00 UTC and close at the US open on the week's first trading day.
  *  - The week is scored at the US close on its last trading day (holiday weeks score early).
  */
-export const GENESIS = Date.UTC(2026, 10, 9) / 1000; // Mon 9 Nov 2026 00:00:00 UTC
+export const GENESIS: number = deployments.genesis;
+if (GENESIS % 86_400 !== 0 || new Date(GENESIS * 1000).getUTCDay() !== 1) throw new Error(`deployments.json genesis ${GENESIS} is not a Monday 00:00 UTC`);
 export const DAY = 86_400;
 export const WEEK = 7 * DAY;
 export const WAT_OFFSET_HOURS = 1;

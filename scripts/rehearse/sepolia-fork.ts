@@ -1,6 +1,7 @@
 // Dress rehearsal of the $0 setup (docs/runbook.md) on a local copy of Base Sepolia, with throwaway keys.
 //
-//   pnpm rehearse            (needs Foundry's anvil and forge, a web build, and internet for the two public RPCs)
+//   pnpm rehearse            (needs Foundry's anvil and forge, a web build, and internet for the two public RPCs;
+//                             run it outside Monday's entry window, which it simulates for the coming week)
 //
 // It forks Base Sepolia with anvil and runs the runbook's own commands against the fork: the forge deploy,
 // `pnpm admin deployments / set-weeks / register-agents / status` and the bots' init. Then an outside agent that
@@ -113,9 +114,14 @@ async function main() {
   const shared = await import("../../shared/src/index");
   const { openDb } = await import("../../shared/src/db");
   const { runTick } = await import("../../scoring/src/jobs");
-  const { UNIVERSE, weekSchedule, hasBuilderCode, pickBookAbi, erc8004IdentityAbi, makeContractsWallet, makePublicClient, weekTable } = { ...shared, weekTable: (await import("../../shared/src/league")).weekTable };
+  const { UNIVERSE, weekSchedule, weekIdAt, GENESIS, hasBuilderCode, pickBookAbi, erc8004IdentityAbi, makeContractsWallet, makePublicClient, weekTable } = { ...shared, weekTable: (await import("../../shared/src/league")).weekTable };
 
   console.log(`Rehearsal folder: ${work}`);
+  // The rehearsal plays the next week whose entries are still to open (week 1 before the season starts).
+  const startedAt = Math.floor(Date.now() / 1000);
+  let W = Math.max(1, weekIdAt(startedAt));
+  if (startedAt >= weekSchedule(W).entryOpen) W++;
+  const s = weekSchedule(W);
   step("1. A local copy of Base Sepolia");
   // Generous retries: the fork fetches state from the public RPC as it goes, and mobile connections drop.
   const anvil = startProcess(ANVIL!, ["--fork-url", SEPOLIA_RPC, "--port", String(port), "--silent", "--retries", "30", "--fork-retry-backoff", "2000", "--timeout", "60000"]);
@@ -129,7 +135,7 @@ async function main() {
   const addr = (k: string) => privateKeyToAccount(k as Hex).address;
   run(FORGE!, ["script", "script/Deploy.s.sol", "--rpc-url", rpc, "--private-key", KEYS.OWNER_PRIVATE_KEY, "--broadcast", "--slow"], {
     cwd: join(ROOT, "contracts"),
-    env: { OWNER_ADDRESS: addr(KEYS.OWNER_PRIVATE_KEY), RESOLVER_ADDRESS: addr(KEYS.RESOLVER_PRIVATE_KEY), SPONSOR_ADDRESS: addr(KEYS.SPONSOR_PRIVATE_KEY) },
+    env: { OWNER_ADDRESS: addr(KEYS.OWNER_PRIVATE_KEY), RESOLVER_ADDRESS: addr(KEYS.RESOLVER_PRIVATE_KEY), SPONSOR_ADDRESS: addr(KEYS.SPONSOR_PRIVATE_KEY), GENESIS: String(GENESIS) },
   });
   check(existsSync(join(ENV.FOUNDRY_BROADCAST!, "Deploy.s.sol/84532/run-latest.json")), "forge script deployed the three contracts (broadcast kept in the rehearsal folder)");
   copyFileSync(join(ROOT, "shared/src/deployments.json"), ENV.DEPLOYMENTS_FILE!);
@@ -145,9 +151,9 @@ async function main() {
   check(deployEth < 0.0002, `deploy cost ${deployEth.toFixed(7)} ETH at the fork's gas price (two faucet claims cover 0.0002)`);
 
   step("3. Weeks, bots and their identities");
-  run("pnpm", ["admin", "set-weeks", "1", "2"]);
-  const [, , tokens] = await chain.readContract({ address: dep.pickBook, abi: pickBookAbi, functionName: "getWeek", args: [1] });
-  check(tokens.length === UNIVERSE.length, `week 1 is set with ${tokens.length} stocks`);
+  run("pnpm", ["admin", "set-weeks", String(W), String(W + 1)]);
+  const [, , tokens] = await chain.readContract({ address: dep.pickBook, abi: pickBookAbi, functionName: "getWeek", args: [W] });
+  check(tokens.length === UNIVERSE.length, `week ${W} is set with ${tokens.length} stocks`);
   run("pnpm", ["--filter", "@btb/bots", "exec", "tsx", "src/cli.ts", "init"]);
   run("pnpm", ["admin", "register-agents"]);
   const ids = JSON.parse(readFileSync(ENV.DEPLOYMENTS_FILE!, "utf8")).networks["84532"].agentIdentities;
@@ -186,7 +192,7 @@ async function main() {
 
   const picks = "NVDA:50,TSLA:30,MSFT:20";
   const pick1 = await web<{ week: number; typedData: Record<string, unknown> }>(`/api/agents/kit/pick-signed?wallet=${agent.address}&picks=${picks}`);
-  check(pick1.status === 200 && pick1.json.week === 1, "pick-signed returns week 1's lock to sign", pick1.json);
+  check(pick1.status === 200 && pick1.json.week === W, `pick-signed returns week ${W}'s lock to sign`, pick1.json);
   const pick2 = await web<{ ok?: boolean; note?: string; error?: string }>("/api/agents/kit/pick-signed", { wallet: agent.address, picks, signature: await agent.signTypedData(pick1.json.typedData as never) });
   check(pick2.json.ok, `the signed picks are accepted ("${pick2.json.note ?? pick2.json.error}")`);
   await stop(webServer);
@@ -202,8 +208,7 @@ async function main() {
   const [early] = await db.query<{ relayed_tx: string | null; error: string | null }>("select relayed_tx, error from signed_locks where wallet = $1", [agent.address.toLowerCase()]);
   check(early && !early.relayed_tx && !early.error, "its early picks wait for the entry window (not sent, not failed)", early);
 
-  step("6. Monday, 10 minutes after entries open");
-  const s = weekSchedule(1);
+  step(`6. Monday ${new Date(s.entryOpen * 1000).toISOString().slice(0, 10)}, 10 minutes after entries open`);
   let t = s.entryOpen + 600;
   await chain.request({ method: "evm_setNextBlockTimestamp" as never, params: [t] as never });
   await chain.request({ method: "evm_mine" as never, params: [] as never });
@@ -213,15 +218,15 @@ async function main() {
     for (const l of lines.filter((x) => /bots|relay|FAILED/.test(x))) console.log(`    tick: ${l}`);
   }
   const player = makeContractsWallet(PLAYER_KEY);
-  const lockHash = await player.writeContract({ address: dep.pickBook, abi: pickBookAbi, functionName: "lock", args: [1, [{ tokenIndex: 0, weightBps: 4000 }, { tokenIndex: 4, weightBps: 3500 }, { tokenIndex: 6, weightBps: 2500 }]] });
+  const lockHash = await player.writeContract({ address: dep.pickBook, abi: pickBookAbi, functionName: "lock", args: [W, [{ tokenIndex: 0, weightBps: 4000 }, { tokenIndex: 4, weightBps: 3500 }, { tokenIndex: 6, weightBps: 2500 }]] });
   await chain.waitForTransactionReceipt({ hash: lockHash });
   await runTick(base, db, { now: t, log: () => {} }); // indexes the last locks
 
   step("7. What the league now shows");
-  const locks = await db.query<{ wallet: string; tx_hash: string }>("select wallet, tx_hash from paper_locks where week = 1");
+  const locks = await db.query<{ wallet: string; tx_hash: string }>("select wallet, tx_hash from paper_locks where week = $1", [W]);
   const agents = await db.query<{ id: string; name: string; wallet: string; erc8004_id: string | null; identity_chain: number | null }>("select id, name, wallet, erc8004_id, identity_chain from agents order by id");
   const lockedBy = new Set(locks.map((l) => l.wallet));
-  for (const a of agents) check(lockedBy.has(a.wallet.toLowerCase()), `${a.name} locked picks for week 1 (ERC-8004 #${a.erc8004_id} on ${a.identity_chain})`);
+  for (const a of agents) check(lockedBy.has(a.wallet.toLowerCase()), `${a.name} locked picks for week ${W} (ERC-8004 #${a.erc8004_id} on ${a.identity_chain})`);
   check(lockedBy.has(privateKeyToAccount(PLAYER_KEY).address.toLowerCase()), "the player's lock is indexed");
   check(agents.length === 4, `${agents.length} entries in the bots tier: ${agents.map((a) => a.name).join(", ")}`);
   check((await chain.getTransactionCount({ address: agent.address })) === nonceAfterIdentity, "the outside agent sent no transaction after its identity");
@@ -232,7 +237,7 @@ async function main() {
     if (hasBuilderCode(tx.input, CODE)) coded++;
   }
   check(coded === locks.length, `Builder Code on ${coded} of ${locks.length} pick transactions`);
-  const table = await weekTable(db, 1, t);
+  const table = await weekTable(db, W, t);
   check(table.bots.length === 4 && table.bots.every((b) => b.picks?.length === 3), "the week table ranks the three bots and the agent on their picks", table.bots.map((b) => b.name));
   await db.close();
 
@@ -241,7 +246,7 @@ async function main() {
   const agentsPage = await page("/agents");
   check(["Momentum", "Contrarian", "Steady", "Rehearsal Agent"].every((n) => agentsPage.includes(n)), "/agents lists the three bots and the agent");
   const momentumPage = await page("/agents/momentum");
-  check(momentumPage.includes("Locked") && momentumPage.includes("sepolia"), "Momentum's page shows its locked picks with Base Sepolia links");
+  check(momentumPage.includes("Weekly picks") && momentumPage.includes("sepolia.basescan.org/tx/"), "Momentum's page shows its locked picks with Base Sepolia links");
   const contractsPage = await page("/contracts");
   check(contractsPage.includes(dep.pickBook.toLowerCase()) || contractsPage.includes(dep.pickBook), "/contracts shows the deployed PickBook");
   await stop(webServer2);

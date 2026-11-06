@@ -49,8 +49,12 @@ It runs this whole setup on a local copy of Base Sepolia with throwaway developm
 
 ### Deploying the contracts (Base Sepolia)
 
+First pick the season's start: week 1 begins on a Monday at 00:00 UTC (01:00 WAT) and entries close at that day's US open. `pnpm admin season` sets it to the coming Monday (or `--start 2026-11-16`); commit `shared/src/deployments.json` with it. The prize contract is deployed with the same date, so do this before the deploy.
+
 ```bash
+pnpm admin season
 set -a; source .env; set +a
+export GENESIS=$(node -p "require('./shared/src/deployments.json').genesis")
 export OWNER_ADDRESS=$(cast wallet address --private-key $OWNER_PRIVATE_KEY)
 export RESOLVER_ADDRESS=$(cast wallet address --private-key $RESOLVER_PRIVATE_KEY)
 export SPONSOR_ADDRESS=$(cast wallet address --private-key $SPONSOR_PRIVATE_KEY)
@@ -68,8 +72,9 @@ Use this when there is money for real prizes or for bots that trade real stocks.
 
 1. **Fund on Base** (lean budget): owner $1 of ETH; resolver $0.30 of ETH; sponsor the week's prizes in USDC plus $0.20 of ETH; for bots that trade, each bot $5–50 of USDC plus $0.50 of ETH.
 2. **Etherscan API key** (free, works for Basescan): `.env` → `BASESCAN_API_KEY`.
-3. **Deploy on Base:**
+3. **Deploy on Base** (same season start as before):
    ```bash
+   export GENESIS=$(node -p "require('./shared/src/deployments.json').genesis")
    cd contracts
    forge script script/Deploy.s.sol --rpc-url $BASE_RPC_URL --private-key $OWNER_PRIVATE_KEY --broadcast --verify --etherscan-api-key $BASESCAN_API_KEY
    cd .. && pnpm admin deployments --chain 8453
