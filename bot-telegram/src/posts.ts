@@ -4,6 +4,7 @@ import { weekTable } from "@btb/shared/league";
 import { EN, personalMessage, resultsMessage } from "@btb/shared/messages";
 import { pct } from "@btb/shared/scoring";
 import { weekSchedule } from "@btb/shared/schedule";
+import { botsMode, contractsChainId } from "@btb/shared/config";
 import { PCM } from "./pidgin";
 
 export type PostKind = "entries-open" | "one-hour-left" | "results";
@@ -31,7 +32,7 @@ export async function sendPost(db: Db, kind: PostKind, week: number, opts: { sit
   const bot = new Bot(opts.token);
   if (kind === "entries-open") {
     const last = week > 1 ? await weekTable(db, week - 1).catch(() => null) : null;
-    const botsLine = last?.bots.length ? `Last week: ${last.bots.map((b) => `${b.name} ${pct(b.ret, 1)}`).join(", ")}.` : "Three AI bots are trading real stocks on Base.";
+    const botsLine = last?.bots.length ? `Last week: ${last.bots.map((b) => `${b.name} ${pct(b.ret, 1)}`).join(", ")}.` : botsMode() === "picks" ? "Three AI bots pick real stocks every week, in public." : "Three AI bots are trading real stocks on Base.";
     await bot.api.sendMessage(opts.group, PCM.entriesOpen ?? `${EN.entriesOpen(week, weekSchedule(week).entryClose, botsLine)}\n\n${opts.site}`);
   } else if (kind === "one-hour-left") {
     await bot.api.sendMessage(opts.group, PCM.oneHourLeft ?? `${EN.oneHourLeft(week)}\n\n${opts.site}/play`);
@@ -45,7 +46,7 @@ export async function sendPost(db: Db, kind: PostKind, week: number, opts: { sit
       if (!me) continue;
       const win = w?.results?.winners?.find((x) => x.wallet.toLowerCase() === p.wallet);
       await bot.api
-        .sendMessage(Number(p.telegram_id), personalMessage(t, me, win ? { text: win.prizeText, tx: w?.settle_txs?.[0]?.tx } : undefined, opts.site))
+        .sendMessage(Number(p.telegram_id), personalMessage(t, me, win ? { text: win.prizeText, tx: w?.settle_txs?.[0]?.tx, chainId: contractsChainId() } : undefined, opts.site))
         .catch((e) => console.log(`DM failed: ${(e as Error).message}`));
     }
   }

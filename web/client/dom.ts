@@ -16,11 +16,11 @@ export function data<T>(id: string): T {
   return JSON.parse(document.getElementById(id)!.textContent!) as T;
 }
 
-export function message(kind: "ok" | "err", text: string, tx?: string) {
+export function message(kind: "ok" | "err", text: string, tx?: string, explorer = "https://basescan.org") {
   const box = $("#msg")!;
   box.className = kind;
   box.style.margin = "12px 0";
-  box.replaceChildren(text, tx ? h("a", { class: "proof", href: `https://basescan.org/tx/${tx}`, target: "_blank", rel: "noopener noreferrer" }, "Basescan") : "");
+  box.replaceChildren(text, tx ? h("a", { class: "proof", href: `${explorer}/tx/${tx}`, target: "_blank", rel: "noopener noreferrer" }, "Basescan") : "");
   box.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 export const clearMessage = () => { const b = $("#msg")!; b.className = ""; b.replaceChildren(); };

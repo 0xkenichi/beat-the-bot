@@ -1,7 +1,7 @@
 import { $, $$, h, data, message, clearMessage } from "./dom";
 import { configure, preload, preloadWhenIdle, prefetchNonce, sendCalls, signIn, friendlyError, type Call } from "./wallet";
 
-type D = { week: number; session: { wallet: string } | null; confirmed: boolean; existing: { tokenIndex: number; weightBps: number }[] | null; suffix: string | null; copy: Record<string, string> };
+type D = { week: number; session: { wallet: string } | null; confirmed: boolean; existing: { tokenIndex: number; weightBps: number }[] | null; suffix: string | null; chainHex: string; explorer: string; copy: Record<string, string> };
 const d = data<D>("play-data");
 const c = d.copy;
 let session = d.session;
@@ -72,9 +72,9 @@ lockBtn.addEventListener("click", async () => {
     const r = await fetch(`/api/play/calls?week=${d.week}&p=${p}`, { cache: "no-store" });
     const j = (await r.json()) as { calls?: Call[]; error?: string };
     if (!r.ok || !j.calls) throw new Error(j.error ?? "Could not prepare your lock");
-    const { txHash } = await sendCalls(session.wallet, j.calls);
+    const { txHash } = await sendCalls(session.wallet, j.calls, { chainHex: d.chainHex });
     await fetch("/api/play/locked", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ txHash }) });
-    message("ok", c.locked!, txHash);
+    message("ok", c.locked!, txHash, d.explorer);
   } catch (err) {
     message("err", friendlyError(err));
   } finally {

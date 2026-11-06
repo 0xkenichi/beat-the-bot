@@ -27,6 +27,27 @@ export const ADDR = {
 /** Fixed, empty address where QuoteProbe runtime code is placed by eth_call state override. */
 export const QUOTE_PROBE_ADDRESS = "0x0000000000000000000000000000000000B07b07" as const;
 
+/** The two chains the league knows. Trading is always Base mainnet; the contracts can be on either. */
+export const CHAINS = {
+  8453: {
+    name: "Base",
+    explorer: "https://basescan.org",
+    rpc: "https://mainnet.base.org",
+    erc8004Identity: "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
+    hex: "0x2105",
+  },
+  84532: {
+    name: "Base Sepolia",
+    explorer: "https://sepolia.basescan.org",
+    rpc: "https://sepolia.base.org",
+    erc8004Identity: "0x8004A818BFB912233c491871b3d84c89A494BD9e",
+    hex: "0x14a34",
+  },
+} as const satisfies Record<number, { name: string; explorer: string; rpc: string; erc8004Identity: Address; hex: string }>;
+export type ContractsChainId = keyof typeof CHAINS;
+export const explorerAddress = (chainId: number, a: string) => `${CHAINS[chainId as ContractsChainId]?.explorer ?? "https://basescan.org"}/address/${a}`;
+export const explorerTx = (chainId: number, h: string) => `${CHAINS[chainId as ContractsChainId]?.explorer ?? "https://basescan.org"}/tx/${h}`;
+
 export const BASESCAN = "https://basescan.org";
 export const basescanAddress = (a: string) => `${BASESCAN}/address/${a}`;
 export const basescanTx = (h: string) => `${BASESCAN}/tx/${h}`;

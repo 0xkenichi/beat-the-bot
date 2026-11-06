@@ -1,9 +1,9 @@
 {
   "builderCode": null,
-  "pickBook": null,
-  "prizePool": null,
-  "agentRoster": null,
-  "deployedBlock": null,
+  "contractsChain": 84532,
   "genesis": 1794182400,
-  "agentIdentities": {}
+  "networks": {
+    "84532": { "pickBook": null, "prizePool": null, "agentRoster": null, "deployedBlock": null, "agentIdentities": {} },
+    "8453": { "pickBook": null, "prizePool": null, "agentRoster": null, "deployedBlock": null, "agentIdentities": {} }
+  }
 }

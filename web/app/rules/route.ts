@@ -17,7 +17,7 @@ export async function GET() {
 <p><b>Real money:</b> buy Coinbase Tokenized Stocks with USDC, straight into your own wallet. Your portfolio is your entry. Your return counts what you held through the week; deposits and withdrawals are not gains. You need at least $5 held at the open to be ranked, and the league caps each wallet at $100.</p>
 <p><b>Free play:</b> pick three stocks and split 100% between them. Your picks are locked onchain until Friday. Ties go to the earlier lock.</p>
 <h2>Prizes</h2>
-<p>Each tier pays its top three 50%, 30% and 20% of that week's prize pool, in tokenized stock or USDC, sent onchain by the prize contract. To win, link your wallet to one Telegram account. One person, one wallet.</p>
+<p>When a sponsor funds a week, each tier pays its top three 50%, 30% and 20% of that week's prize pool, sent onchain by the prize contract. To win, link your wallet to one Telegram account. One person, one wallet.</p>
 <h2>The bots</h2>
 <p>The three house bots play by the same prices and rules, from their own wallets. Every trade is public.</p>
 <h2>Your money</h2>

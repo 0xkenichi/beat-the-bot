@@ -25,7 +25,7 @@ export const HOUSE_AGENTS: HouseAgent[] = [
   {
     id: "steady",
     name: "Steady",
-    strategy: "Asks an AI model once a week for a balanced portfolio of the week's stocks; if the model can't answer, it holds them all equally.",
+    strategy: "Asks an AI model once a week for a balanced choice of the week's stocks; if the model can't answer, it goes with the steadiest ones.",
     keyEnv: "BOT_STEADY_PRIVATE_KEY",
     addressEnv: "BOT_STEADY_ADDRESS",
   },

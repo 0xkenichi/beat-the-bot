@@ -1,5 +1,5 @@
 import { parseAbi, parseEventLogs, type Address, type PublicClient } from "viem";
-import { ADDR, UNIVERSE, latestRound, valueUsd, valueWallet, pickBookAbi, agentRosterAbi, contracts, DEPLOYMENTS, b20Abi } from "@btb/shared";
+import { ADDR, UNIVERSE, latestRound, valueUsd, valueWallet, pickBookAbi, agentRosterAbi, contracts, network, b20Abi, makeContractsClient } from "@btb/shared";
 import { kvGet, kvSet, type Db } from "@btb/shared/db";
 
 const transferAbi = parseAbi(["event Transfer(address indexed from, address indexed to, uint256 value)"]);
@@ -42,11 +42,11 @@ async function getLogsChunked(client: PublicClient, params: { address: Address |
   return logs;
 }
 
-/** PickBook Locked events -> paper_locks. */
+/** PickBook Locked events -> paper_locks. `client` and `head` are on the contracts chain. */
 export async function indexLocks(client: PublicClient, db: Db, head: bigint) {
   const pickBook = contracts().pickBook;
   if (!pickBook) return 0;
-  const from = BigInt(await kvGet<string>(db, "cursor:locks", String(DEPLOYMENTS.deployedBlock ?? startBlock(head, 1000n))));
+  const from = BigInt(await kvGet<string>(db, "cursor:locks", String(network().deployedBlock ?? startBlock(head, 1000n))));
   if (from > head) return 0;
   const raw = await getLogsChunked(client, { address: pickBook, topics: [] }, from, head);
   const events = parseEventLogs({ abi: pickBookAbi, logs: raw.map((l) => ({ ...l, blockNumber: BigInt(l.blockNumber), logIndex: Number(l.logIndex) })) as never, eventName: "Locked" });
@@ -71,7 +71,7 @@ export async function indexLocks(client: PublicClient, db: Db, head: bigint) {
 export async function indexRoster(client: PublicClient, db: Db, head: bigint) {
   const roster = contracts().agentRoster;
   if (!roster) return 0;
-  const from = BigInt(await kvGet<string>(db, "cursor:roster", String(DEPLOYMENTS.deployedBlock ?? startBlock(head, 1000n))));
+  const from = BigInt(await kvGet<string>(db, "cursor:roster", String(network().deployedBlock ?? startBlock(head, 1000n))));
   if (from > head) return 0;
   const raw = await getLogsChunked(client, { address: roster, topics: [] }, from, head);
   const logs = raw.map((l) => ({ ...l, blockNumber: BigInt(l.blockNumber), logIndex: Number(l.logIndex) })) as never;
@@ -80,9 +80,9 @@ export async function indexRoster(client: PublicClient, db: Db, head: bigint) {
     const wallet = e.args.wallet.toLowerCase();
     const [p] = await db.query<{ name: string; strategy: string }>("select name, strategy from agent_profiles where wallet = $1", [wallet]);
     await db.query(
-      `insert into agents (id, name, strategy, wallet, house, erc8004_id, roster_id) values ($1, $2, $3, $4, false, $5, $6)
-       on conflict (wallet) do update set erc8004_id = excluded.erc8004_id, roster_id = excluded.roster_id`,
-      [`agent-${e.args.agentId}`, p?.name ?? `Agent #${e.args.agentId}`, p?.strategy ?? "An AI agent entered by its builder.", wallet, e.args.erc8004Id.toString(), Number(e.args.agentId)],
+      `insert into agents (id, name, strategy, wallet, house, erc8004_id, roster_id, identity_chain) values ($1, $2, $3, $4, false, $5, $6, $7)
+       on conflict (wallet) do update set erc8004_id = excluded.erc8004_id, roster_id = excluded.roster_id, identity_chain = excluded.identity_chain`,
+      [`agent-${e.args.agentId}`, p?.name ?? `Agent #${e.args.agentId}`, p?.strategy ?? "An AI agent entered by its builder.", wallet, e.args.erc8004Id.toString(), Number(e.args.agentId), Number(e.args.identityChainId)],
     );
     n++;
   }
@@ -167,11 +167,13 @@ export async function snapshotAll(client: PublicClient, db: Db, stamp: Date, opt
   return n;
 }
 
-export async function runOnce(client: PublicClient, db: Db, log = console.log) {
+/** One pass. `client` is Base mainnet (prices, flows, snapshots); `contractsClient` is the league contracts' chain. */
+export async function runOnce(client: PublicClient, db: Db, log = console.log, contractsClient: PublicClient = makeContractsClient()) {
   const head = await client.getBlockNumber();
+  const cHead = await contractsClient.getBlockNumber();
   await cachePrices(client, db);
-  const locks = await indexLocks(client, db, head);
-  const agents = await indexRoster(client, db, head);
+  const locks = await indexLocks(contractsClient, db, cHead);
+  const agents = await indexRoster(contractsClient, db, cHead);
   const flows = await indexFlows(client, db, head);
   const stamp = new Date(Math.floor(Date.now() / 3_600_000) * 3_600_000);
   const [have] = await db.query("select 1 from nav_snapshots where taken_at = $1 limit 1", [stamp.toISOString()]);

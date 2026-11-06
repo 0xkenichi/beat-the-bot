@@ -147,6 +147,18 @@ create table if not exists agent_profiles (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+alter table agents add column if not exists identity_chain integer;
+create table if not exists signed_registrations (
+  wallet text primary key,
+  erc8004_id text not null,
+  identity_chain integer not null,
+  metadata_uri text not null,
+  deadline bigint not null,
+  signature text not null,
+  created_at timestamptz not null default now(),
+  relayed_tx text,
+  error text
+);
 create table if not exists kv (
   key text primary key,
   value jsonb not null,

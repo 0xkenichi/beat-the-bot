@@ -20,7 +20,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ n: stri
     "select open_prices, close_prices, results_hash, settle_txs, fund_txs from weeks where week = $1",
     [n],
   );
-  const pool = contracts().prizePool;
+  const { prizePool: pool, chainId: chain } = contracts();
   const phaseText = tb.phase === "upcoming" ? "not open yet" : tb.phase === "entries-open" ? "open for entries" : tb.phase === "live" ? "live" : "being scored";
   return page({
     lang,
@@ -43,9 +43,9 @@ ${Object.entries(w.open_prices).map(([addr, o]) => {
 })}</tbody></table>`}
 <p class="muted">Each price is the Chainlink round in force at the cutoff. * marks a round more than two hours older than the cutoff (the last valid round was used).</p></section>
 <section class="card small"><h2 style="margin-top:0">Prizes</h2>
-${w?.fund_txs?.length ? html`<ul>${w.fund_txs.map((f) => html`<li>Funded by the sponsor${proof({ tx: f.tx })}</li>`)}</ul>` : html`<p class="empty">Prizes are funded before the week opens.</p>`}
-${w?.settle_txs?.length ? html`<ul>${w.settle_txs.map((x) => html`<li>Paid (${x.tier})${proof({ tx: x.tx })}</li>`)}</ul>` : html`<p class="muted">Payouts appear here after the week is settled.</p>`}
-${pool ? html`<p class="muted">Prize contract${proof({ address: pool })}</p>` : ""}</section>
+${w?.fund_txs?.length ? html`<ul>${w.fund_txs.map((f) => html`<li>Funded by the sponsor${proof({ tx: f.tx, chain })}</li>`)}</ul>` : html`<p class="empty">No prizes this week. When a sponsor funds a week, the prizes and their payouts show here.</p>`}
+${w?.settle_txs?.length ? html`<ul>${w.settle_txs.map((x) => html`<li>Paid (${x.tier})${proof({ tx: x.tx, chain })}</li>`)}</ul>` : ""}
+${pool ? html`<p class="muted">Prize contract${proof({ address: pool, chain })}</p>` : ""}</section>
 <p class="small"><a href="/">Back to this week's table</a></p>`,
   });
 }

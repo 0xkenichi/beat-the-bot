@@ -1,11 +1,16 @@
 import { html, raw, type Raw } from "@/lib/html";
-import { basescanAddress, basescanToken, basescanTx } from "@btb/shared/chain";
+import { basescanToken, explorerAddress, explorerTx } from "@btb/shared/chain";
+import { contractsChainId } from "@btb/shared/config";
 import type { Row } from "@btb/shared/league";
 import { pct, usd } from "@/lib/format";
 
-/** The small "Basescan ↗" link that sits next to every number. */
-export function proof(o: { address?: string | null; tx?: string | null; token?: string | null; holder?: string; label?: string }): Raw {
-  const href = o.tx ? basescanTx(o.tx) : o.token ? basescanToken(o.token, o.holder) : o.address ? basescanAddress(o.address) : null;
+/**
+ * The small "Basescan ↗" link that sits next to every number. `chain` defaults to Base (stocks, wallets, trades);
+ * pass the contracts chain for picks, agents and prizes.
+ */
+export function proof(o: { address?: string | null; tx?: string | null; token?: string | null; holder?: string; label?: string; chain?: number }): Raw {
+  const chain = o.chain ?? 8453;
+  const href = o.tx ? explorerTx(chain, o.tx) : o.token ? basescanToken(o.token, o.holder) : o.address ? explorerAddress(chain, o.address) : null;
   if (!href) return raw("");
   return html`<a class="proof" href="${href}" target="_blank" rel="noopener noreferrer">${o.label ?? "Basescan"}</a>`;
 }
@@ -16,7 +21,7 @@ export function tierTable(o: { title: string; rows: Row[]; empty: string; showVa
 <table><thead><tr><th class="rank">#</th><th>Player</th>${o.showValue ? html`<th class="num">Value</th>` : ""}<th class="num">Week</th></tr></thead><tbody>
 ${o.rows.map(
   (r) => html`<tr><td class="rank">${r.rank}</td><td>${r.agentId ? html`<a href="/agents/${r.agentId}"><b>${r.name}</b></a>` : html`<span>${r.name}</span>`}${r.beatTheBot ? html` <span class="badge">${o.beatLabel}</span>` : ""}
-${r.picks ? html`<div class="small muted">${r.picks.map((p) => `${p.ticker} ${p.weightBps / 100}%`).join(" · ")}${proof({ tx: r.lockedTx, label: "lock" })}</div>` : ""}
+${r.picks ? html`<div class="small muted">${r.picks.map((p) => `${p.ticker} ${p.weightBps / 100}%`).join(" · ")}${proof({ tx: r.lockedTx, label: "lock", chain: contractsChainId() })}</div>` : ""}
 ${!r.beatTheBot && r.beats?.length ? html`<div class="small muted">Beat ${r.beats.join(" and ")}</div>` : ""}</td>
 ${o.showValue ? html`<td class="num">${r.valueUsd != null ? usd(r.valueUsd) : "–"}${proof({ address: r.wallet })}</td>` : ""}
 <td class="num ${r.ret >= 0 ? "up" : "down"}">${pct(r.ret, 2)}</td></tr>`,

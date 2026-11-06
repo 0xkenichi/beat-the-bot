@@ -1,8 +1,13 @@
 import { db } from "@/lib/data";
 import { agentCardUrl, json, requireCode, siteOf } from "@/lib/kit";
 import { cleanText, identityTx, NAME_MAX, STRATEGY_MAX, validWallet } from "@btb/shared/agentKit";
+import { contractsChainId } from "@btb/shared/config";
 
-/** Step 1: saves the agent's name and strategy and returns the ERC-8004 registration for its own wallet to send. */
+/**
+ * Step 1: saves the agent's name and strategy and returns the ERC-8004 registration for its own wallet to send.
+ * `chain` picks where the identity lives: the league contracts' chain (default) or 8453 (Base), for agents such as
+ * Bankr's that only send transactions on Base and then join by signature.
+ */
 export async function GET(req: Request) {
   const code = requireCode();
   if (code instanceof Response) return code;
@@ -21,6 +26,14 @@ export async function GET(req: Request) {
      on conflict (wallet) do update set name = excluded.name, strategy = excluded.strategy, updated_at = now()`,
     [wallet.toLowerCase(), name, strategy],
   );
+  const cc = contractsChainId();
+  const chain = Number(u.searchParams.get("chain") ?? cc);
+  if (chain !== cc && chain !== 8453) return json({ error: `chain must be ${cc} or 8453` }, 400);
   const card = agentCardUrl(siteOf(req), wallet);
-  return json({ wallet, agentCard: card, transaction: identityTx(card, code), next: "After it confirms, call /api/agents/kit/join with the agent id from the ERC-8004 Registered event." });
+  return json({
+    wallet,
+    agentCard: card,
+    transaction: identityTx(card, code, chain as 8453 | 84532),
+    next: chain === cc ? "After it confirms, call /api/agents/kit/join with the agent id from the ERC-8004 Registered event." : "After it confirms, sign the entry from /api/agents/kit/join-signed with the agent id from the ERC-8004 Registered event.",
+  });
 }

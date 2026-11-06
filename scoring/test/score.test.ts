@@ -86,3 +86,55 @@ describe("week scoring matches a hand calculation", async () => {
     expect(again.hash).toBe(hash);
   });
 });
+
+/**
+ * The no-cost league: house bots and entered agents hold no money and compete on their locked picks, and no sponsor
+ * has funded the week. Prices: +10%, -5%, +2% (same as above).
+ */
+describe("bots that compete on picks rank in the bots tier, scored like paper", async () => {
+  const db = await openDb("pglite:");
+  const s = weekSchedule(2);
+  const [t0, t1, t2] = UNIVERSE;
+  const price = (p: number): PriceRec => ({ price8: String(Math.round(p * 1e8)), updatedAt: s.scoreAt - 60, roundId: "1", stale: false, feed: "0x0" });
+  const open = { [t0!.address.toLowerCase()]: price(100), [t1!.address.toLowerCase()]: price(200), [t2!.address.toLowerCase()]: price(50) };
+  const close = { [t0!.address.toLowerCase()]: price(110), [t1!.address.toLowerCase()]: price(190), [t2!.address.toLowerCase()]: price(51) };
+  const W = { mom: "0x00000000000000000000000000000000000000d1", con: "0x00000000000000000000000000000000000000d2", agent: "0x00000000000000000000000000000000000000e1", p: "0x0000000000000000000000000000000000000f01", late: "0x0000000000000000000000000000000000000f02" };
+
+  await db.query(`insert into weeks (week, entry_open, entry_close, score_at, universe, open_prices, status) values (2, $1, $2, $3, $4::jsonb, $5::jsonb, 'live')`,
+    [s.entryOpen, s.entryClose, s.scoreAt, JSON.stringify(UNIVERSE.map((u) => u.address)), JSON.stringify(open)]);
+  await db.query(`insert into agents (id, name, strategy, wallet, house) values ('momentum', 'Momentum', 'x', $1, true), ('contrarian', 'Contrarian', 'y', $2, true), ('agent-1', 'Outside Agent', 'z', $3, false)`, [W.mom, W.con, W.agent]);
+  await db.query("insert into players (wallet, non_us_confirmed_at, telegram_id) values ($1, now(), 201), ($2, now(), 202)", [W.p, W.late]);
+  const lock = (w: string, picks: number[], at: number) =>
+    db.query("insert into paper_locks (week, wallet, picks, picks_hash, locked_at, tx_hash, block) values (2, $1, $2::jsonb, '0x', $3, '0xcd', 1)", [w, JSON.stringify(picks.map((weightBps, tokenIndex) => ({ tokenIndex, weightBps }))), at]);
+  // Momentum 60/30/10: 0.6*0.10 + 0.3*(-0.05) + 0.1*0.02 = +4.7%
+  await lock(W.mom, [6000, 3000, 1000], s.entryOpen + 300);
+  // Contrarian 20/50/30: 0.2*0.10 + 0.5*(-0.05) + 0.3*0.02 = +0.1%
+  await lock(W.con, [2000, 5000, 3000], s.entryOpen + 400);
+  // Outside agent 34/33/33: +2.41%
+  await lock(W.agent, [3400, 3300, 3300], s.entryOpen + 500);
+  // Player 50/30/20: +3.9%. A lock after entries close does not count.
+  await lock(W.p, [5000, 3000, 2000], s.entryOpen + 600);
+  await lock(W.late, [9000, 500, 500], s.entryClose + 60);
+
+  const { results } = await scoreWeek({} as PublicClient, db, 2, { now: s.scoreAt + 600, closePrices: close, takeSnapshot: false });
+
+  it("house bots and agents rank together on their picks", () => {
+    expect(results.bots.map((b) => [b.name, b.agentId])).toEqual([["Momentum", "momentum"], ["Outside Agent", "agent-1"], ["Contrarian", "contrarian"]]);
+    expect(results.bots[0]!.ret).toBeCloseTo(0.047, 10);
+    expect(results.bots[1]!.ret).toBeCloseTo(0.0241, 10);
+    expect(results.bots[2]!.ret).toBeCloseTo(0.001, 10);
+    expect(results.bots[0]!.picks).toEqual([{ ticker: t0!.ticker, weightBps: 6000 }, { ticker: t1!.ticker, weightBps: 3000 }, { ticker: t2!.ticker, weightBps: 1000 }]);
+  });
+  it("agents are not in the players' table and can't win prizes", () => {
+    expect(results.paper.map((r) => r.wallet)).toEqual([W.p]);
+    expect(results.bots.every((b) => b.eligible === undefined)).toBe(true);
+  });
+  it("players are measured against the best bot", () => {
+    expect(results.paper[0]!.ret).toBeCloseTo(0.039, 10);
+    expect(results.paper[0]!.beatTheBot).toBe(false); // 3.9% < 4.7%
+    expect(results.paper[0]!.beats).toEqual(["Outside Agent", "Contrarian"]);
+  });
+  it("an unfunded week has no winners", () => {
+    expect(results.winners).toEqual([]);
+  });
+});

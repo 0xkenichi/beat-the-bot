@@ -40,7 +40,7 @@ export async function table(week?: number) {
   return weekTable(await db(), week ?? weekIdAt(Math.floor(Date.now() / 1000)));
 }
 
-export type AgentRow = { id: string; name: string; strategy: string; wallet: Address; house: boolean; erc8004_id: string | null; start_nav: number | null; started_at: string | null; paused: boolean; paused_reason: string | null };
+export type AgentRow = { id: string; name: string; strategy: string; wallet: Address; house: boolean; erc8004_id: string | null; identity_chain: number | null; start_nav: number | null; started_at: string | null; paused: boolean; paused_reason: string | null };
 
 export async function agents(): Promise<(AgentRow & { nav: number | null; navAt: string | null })[]> {
   return (await db()).query(
@@ -68,7 +68,11 @@ export async function agent(id: string) {
   const weekly = weeks
     .map((w) => ({ week: w.week, ret: w.results?.bots.find((b) => b.wallet.toLowerCase() === a.wallet.toLowerCase())?.ret }))
     .filter((w): w is { week: number; ret: number } => typeof w.ret === "number");
-  return { agent: a, snaps, trades, weekly };
+  const locks = await d.query<{ week: number; picks: { tokenIndex: number; weightBps: number }[]; tx_hash: string }>(
+    "select week, picks, tx_hash from paper_locks where wallet = $1 order by week desc limit 52",
+    [a.wallet],
+  );
+  return { agent: a, snaps, trades, weekly, locks };
 }
 
 export async function player(wallet: string) {

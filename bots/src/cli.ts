@@ -6,7 +6,7 @@ import { formatEther, type Address } from "viem";
 import { HOUSE_AGENTS, makePublicClient, requireBuilderCode, valueWallet } from "@btb/shared";
 import { getDb, migrate } from "@btb/shared/db";
 import { loadEnv } from "@btb/shared/env";
-import { botAddress, botsDue, initAgents, rebalanceBot } from "./run";
+import { botAddress, botsDue, botsMode, botWeeklyAction, initAgents } from "./run";
 import { hourStamp, snapshotWallets } from "./nav";
 
 loadEnv();
@@ -26,11 +26,11 @@ async function rebalance() {
   const builderCode = requireBuilderCode();
   const dry = flag("dry-run");
   if (!dry && !botsDue()) {
-    console.log("Market closed or entries still open: bots trade after the US open on the week's first trading day.");
+    console.log(botsMode() === "picks" ? "Bots lock picks while entries are open (Monday, before the US open)." : "Bots trade after the US open on the week's first trading day.");
     return;
   }
   for (const a of HOUSE_AGENTS.filter((x) => !opt("bot") || x.id === opt("bot"))) {
-    console.log(`${a.name}: ${await rebalanceBot(a, { client, db, builderCode, dry })}`);
+    console.log(`${a.name}: ${await botWeeklyAction(a, { client, db, builderCode, dry })}`);
   }
 }
 

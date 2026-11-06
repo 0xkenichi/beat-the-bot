@@ -13,7 +13,7 @@ export const ASSET_VERSION = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) ?? "
 
 export function page(o: PageOpts): Response {
   const title = o.title ? `${o.title} · Beat the Bot` : "Beat the Bot";
-  const desc = o.description ?? "A weekly stock-picking league on Base. Pick real Coinbase Tokenized Stocks and try to beat three AI bots that trade with real money.";
+  const desc = o.description ?? "A weekly stock-picking league on Base. Pick real Coinbase Tokenized Stocks and try to beat three AI bots.";
   const active = (href: string) => (href === "/" ? o.path === "/" : o.path.startsWith(href));
   const doc = html`<!doctype html>
 <html lang="${o.lang === "pcm" ? "pcm" : "en"}">

@@ -101,9 +101,11 @@ export async function scoreWeek(
   };
 
   const agents = await db.query<{ id: string; name: string; wallet: string }>("select id, name, wallet from agents where not paused or house");
-  const bots: Row[] = rankTier(
-    agents.map((a) => ({ a, r: twr(a.wallet) })).filter((x) => x.r.ret != null).map(({ a, r }) => ({ wallet: a.wallet, tier: "bot" as const, name: a.name, agentId: a.id, ret: r.ret!, valueUsd: r.closeUsd, openUsd: r.openUsd, flowsUsd: r.flowsUsd })),
-  );
+  // Bots and agents holding money at the open are scored on their wallet; the rest on their locked picks (below).
+  const fundedBots: Row[] = agents
+    .map((a) => ({ a, r: twr(a.wallet) }))
+    .filter((x) => x.r.ret != null && (x.r.openUsd ?? 0) >= 1)
+    .map(({ a, r }) => ({ wallet: a.wallet, tier: "bot" as const, name: a.name, agentId: a.id, ret: r.ret!, valueUsd: r.closeUsd, openUsd: r.openUsd, flowsUsd: r.flowsUsd }));
   const players = await db.query<{ wallet: string; display_name: string | null; telegram_id: string | null }>("select wallet, display_name, telegram_id from players where non_us_confirmed_at is not null");
   const short = (x: string) => `${x.slice(0, 6)}…${x.slice(-4)}`;
   // Prize eligibility: a linked Telegram account (one each way). Kenichi can exclude wallets he finds belong to
@@ -120,19 +122,25 @@ export async function scoreWeek(
     "select wallet, picks, locked_at, tx_hash from paper_locks where week = $1 and locked_at < $2",
     [week, s.entryClose],
   );
-  const uni = w.universe.map((a) => a.toLowerCase());
+  const uni = (w.universe?.length ? w.universe : UNIVERSE.map((u) => u.address)).map((a) => a.toLowerCase());
   const tick = (a: string) => UNIVERSE.find((u) => u.address.toLowerCase() === a)?.ticker ?? a.slice(0, 8);
-  const paper: Row[] = rankTier(
-    locks.map((l) => {
-      const p = players.find((x) => x.wallet === l.wallet);
-      return {
-        wallet: l.wallet, tier: "paper" as const, name: p?.display_name ?? short(l.wallet),
-        ret: paperReturn(l.picks, uni, asBig(w.open_prices!), asBig(close)),
-        lockedAt: Number(l.locked_at), lockedTx: l.tx_hash, telegram: !!p?.telegram_id, eligible: eligible(l.wallet, p?.telegram_id ?? null),
-        picks: l.picks.map((x) => ({ ticker: tick(uni[x.tokenIndex] ?? ""), weightBps: x.weightBps })),
-      };
-    }),
-  );
+  const agentByWallet = new Map(agents.map((a) => [a.wallet.toLowerCase(), a]));
+  const pickRows: Row[] = locks.map((l) => {
+    const p = players.find((x) => x.wallet === l.wallet);
+    return {
+      wallet: l.wallet, tier: "paper" as const, name: p?.display_name ?? short(l.wallet),
+      ret: paperReturn(l.picks, uni, asBig(w.open_prices!), asBig(close)),
+      lockedAt: Number(l.locked_at), lockedTx: l.tx_hash, telegram: !!p?.telegram_id, eligible: eligible(l.wallet, p?.telegram_id ?? null),
+      picks: l.picks.map((x) => ({ ticker: tick(uni[x.tokenIndex] ?? ""), weightBps: x.weightBps })),
+    };
+  });
+  // Agents compete for the record, not prizes: their picks rank in the bots tier.
+  const pickBots: Row[] = pickRows
+    .filter((r) => agentByWallet.has(r.wallet.toLowerCase()))
+    .map((r) => { const a = agentByWallet.get(r.wallet.toLowerCase())!; return { ...r, tier: "bot" as const, name: a.name, agentId: a.id, eligible: undefined, telegram: undefined }; });
+  const pickBotWallets = new Set(pickBots.map((r) => r.wallet.toLowerCase()));
+  const bots: Row[] = rankTier([...fundedBots.filter((r) => !pickBotWallets.has(r.wallet.toLowerCase())), ...pickBots]);
+  const paper: Row[] = rankTier(pickRows.filter((r) => !agentByWallet.has(r.wallet.toLowerCase())));
   markBeatTheBot(real, bots);
   markBeatTheBot(paper, bots);
 

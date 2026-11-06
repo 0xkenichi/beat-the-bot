@@ -1,6 +1,7 @@
 import type { Db } from "./db";
 import { kvGet } from "./db";
 import { weekSchedule, weekIdAt, type WeekSchedule } from "./schedule";
+import { UNIVERSE } from "./universe";
 import { MIN_RANKED_USD, markBeatTheBot, paperReturn, rankTier, timeWeightedReturn, type Ranked, type Snapshot, type Flow } from "./scoring";
 
 export type Row = Ranked & {
@@ -91,7 +92,10 @@ export async function weekTable(db: Db, weekId = weekIdAt(Math.floor(Date.now() 
     return { wallet, tier, name, ret, valueUsd: s[s.length - 1]!.valueUsd, agentId, telegram, eligible: tier === "real" ? (s[0]!.valueUsd >= MIN_RANKED_USD) : true };
   };
 
-  base.bots = rankTier(agents.map((a) => rowFor(a.wallet, "bot", a.name, a.id)).filter((r): r is Row => !!r));
+  // Bots and agents that hold money are scored on their wallet; the rest on the picks they locked (below).
+  const fundedBots = agents
+    .map((a) => rowFor(a.wallet, "bot", a.name, a.id))
+    .filter((r): r is Row => !!r && (snaps.get(r.wallet.toLowerCase())?.[0]?.valueUsd ?? 0) >= 1);
   base.real = rankTier(
     players
       .map((p) => rowFor(p.wallet, "real", p.display_name ?? shortName(p.wallet), undefined, !!p.telegram_id))
@@ -104,11 +108,11 @@ export async function weekTable(db: Db, weekId = weekIdAt(Math.floor(Date.now() 
     [schedule.weekId],
   );
   const latest = await kvGet<PriceMap>(db, "prices:latest", {});
-  const universe = (week?.universe ?? []).map((a) => a.toLowerCase());
+  const universe = (week?.universe?.length ? week.universe : UNIVERSE.map((u) => u.address)).map((a) => a.toLowerCase());
   const tickers = await kvGet<Record<string, string>>(db, "tickers", {});
   const open = week?.open_prices;
-  base.paper = rankTier(
-    locks.map((l) => {
+  const agentByWallet = new Map(agents.map((a) => [a.wallet.toLowerCase(), a]));
+  const pickRows = locks.map((l) => {
       let ret = 0;
       if (open && phase !== "entries-open") {
         const o = Object.fromEntries(Object.entries(open).map(([k, v]) => [k.toLowerCase(), BigInt(v.price8)]));
@@ -130,8 +134,13 @@ export async function weekTable(db: Db, weekId = weekIdAt(Math.floor(Date.now() 
         telegram: !!p?.telegram_id,
         picks: l.picks.map((x) => ({ ticker: tickers[universe[x.tokenIndex] ?? ""] ?? `#${x.tokenIndex}`, weightBps: x.weightBps })),
       };
-    }),
-  );
+  });
+  const pickBots: Row[] = pickRows
+    .filter((r) => agentByWallet.has(r.wallet.toLowerCase()))
+    .map((r) => { const a = agentByWallet.get(r.wallet.toLowerCase())!; return { ...r, tier: "bot" as const, name: a.name, agentId: a.id, telegram: undefined }; });
+  const pickBotWallets = new Set(pickBots.map((r) => r.wallet.toLowerCase()));
+  base.bots = rankTier([...fundedBots.filter((r) => !pickBotWallets.has(r.wallet.toLowerCase())), ...pickBots]);
+  base.paper = rankTier(pickRows.filter((r) => !agentByWallet.has(r.wallet.toLowerCase())));
   if (phase !== "entries-open") {
     markBeatTheBot(base.real, base.bots);
     markBeatTheBot(base.paper, base.bots);

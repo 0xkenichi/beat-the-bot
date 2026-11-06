@@ -6,6 +6,7 @@ import { proof } from "@/views/parts";
 import { pct } from "@/lib/format";
 import { validWallet } from "@btb/shared/agentKit";
 import { weekIdAt } from "@btb/shared/schedule";
+import { contractsChainId } from "@btb/shared/config";
 
 /** A player's week, made to be shared: the page's preview image is their result card. */
 export async function GET(req: Request, { params }: { params: Promise<{ wallet: string }> }) {
@@ -28,7 +29,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ wallet: 
     image: `/api/og/player/${wallet}?week=${week}`,
     body: html`<h1>${line}</h1>
 ${me ? html`<p class="stat ${me.ret >= 0 ? "up" : "down"}">${pct(me.ret, 2)}</p>
-<p class="muted">${me.tier === "real" ? "Real money" : "Free play"}${me.picks ? ` · ${me.picks.map((p) => `${p.ticker} ${p.weightBps / 100}%`).join(" · ")}` : ""}${proof(me.tier === "real" ? { address: wallet } : { tx: me.lockedTx })}</p>` : html`<p class="muted">No entry from this wallet this week.</p>`}
+<p class="muted">${me.tier === "real" ? "Real money" : "Free play"}${me.picks ? ` · ${me.picks.map((p) => `${p.ticker} ${p.weightBps / 100}%`).join(" · ")}` : ""}${proof(me.tier === "real" ? { address: wallet } : { tx: me.lockedTx, chain: contractsChainId() })}</p>` : html`<p class="muted">No entry from this wallet this week.</p>`}
 <div class="row wrap" style="gap:10px;margin:16px 0">
 <a class="btn" href="https://x.com/intent/post?text=${encodeURIComponent(tweet)}&url=${encodeURIComponent(shareUrl)}" target="_blank" rel="noopener noreferrer">Share on X</a>
 <a class="btn secondary" href="/play">Play free</a></div>

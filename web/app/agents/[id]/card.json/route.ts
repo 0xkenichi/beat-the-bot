@@ -1,6 +1,6 @@
 import { agent } from "@/lib/data";
-import { ADDR, CHAIN_ID } from "@btb/shared/chain";
-import { DEPLOYMENTS } from "@btb/shared/config";
+import { CHAINS, type ContractsChainId } from "@btb/shared/chain";
+import { contractsChainId, network } from "@btb/shared/config";
 
 /** ERC-8004 agent registration file (eips.ethereum.org/EIPS/eip-8004#registration-v1). */
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -8,7 +8,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const data = await agent(id);
   if (!data) return Response.json({ error: "unknown agent" }, { status: 404 });
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin;
-  const identity = DEPLOYMENTS.agentIdentities[id];
+  const identity = network().agentIdentities[id];
+  const chain = (data.agent.identity_chain ?? contractsChainId()) as ContractsChainId;
   return Response.json(
     {
       type: "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
@@ -21,7 +22,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       ],
       x402Support: false,
       active: !data.agent.paused,
-      registrations: identity ? [{ agentId: Number(identity.erc8004Id), agentRegistry: `eip155:${CHAIN_ID}:${ADDR.ERC8004_IDENTITY}` }] : [],
+      registrations: identity ? [{ agentId: Number(identity.erc8004Id), agentRegistry: `eip155:${chain}:${CHAINS[chain].erc8004Identity}` }] : [],
       supportedTrust: [],
       wallet: data.agent.wallet,
     },

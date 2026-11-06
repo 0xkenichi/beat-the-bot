@@ -36,7 +36,7 @@ export function preload(): Promise<Provider> {
     const sdk = createBaseAccountSDK({
       appName: "Beat the Bot",
       appLogoUrl: `${location.origin}/icon.svg`,
-      appChainIds: [8453],
+      appChainIds: [8453, 84532],
       subAccounts: { creation: "on-connect", defaultAccount: "sub", funding: "manual" },
       preference: { telemetry: false, ...(suffix ? { attribution: { dataSuffix: suffix } } : {}) },
     });
@@ -79,15 +79,19 @@ export async function signIn(): Promise<{ wallet: string; confirmed: boolean }> 
   return { wallet, confirmed: !!j.confirmed };
 }
 
-/** Sends one atomic batch from the sub-account and waits for the transaction hash. */
-export async function sendCalls(from: string, calls: Call[], opts: { sponsored?: boolean } = {}): Promise<{ id: string; txHash: string }> {
+/**
+ * Sends one atomic batch from the sub-account on the given chain (stock trades: Base, "0x2105"; free-play picks:
+ * the league contracts' chain) and waits for the transaction hash. Gas goes through the paymaster proxy for that chain.
+ */
+export async function sendCalls(from: string, calls: Call[], opts: { sponsored?: boolean; chainHex?: string } = {}): Promise<{ id: string; txHash: string }> {
   const provider = await preload();
+  const chainHex = opts.chainHex ?? "0x2105";
   const capabilities: Record<string, unknown> = {};
-  if (opts.sponsored !== false) capabilities.paymasterService = { url: `${location.origin}/api/paymaster` };
+  if (opts.sponsored !== false) capabilities.paymasterService = { url: `${location.origin}/api/paymaster?chain=${parseInt(chainHex, 16)}` };
   if (suffix) capabilities.dataSuffix = { value: suffix, optional: true };
   const id = (await provider.request({
     method: "wallet_sendCalls",
-    params: [{ version: "2.0.0", chainId: "0x2105", from, atomicRequired: true, calls, capabilities }],
+    params: [{ version: "2.0.0", chainId: chainHex, from, atomicRequired: true, calls, capabilities }],
   })) as string | { id: string };
   const callsId = typeof id === "string" ? id : id.id;
   for (let i = 0; i < 90; i++) {

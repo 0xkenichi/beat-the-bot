@@ -1,26 +1,20 @@
-import { createWalletClient, http, parseEventLogs, type Address, type Hex, type PublicClient } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { base } from "viem/chains";
-import { weekIdAt, weekSchedule, contracts, prizePoolAbi, pickBookAbi, builderCodeSuffix, requireBuilderCode, HOUSE_AGENTS } from "@btb/shared";
+import { parseEventLogs, type Address, type Hex, type PublicClient } from "viem";
+import { weekIdAt, weekSchedule, contracts, prizePoolAbi, pickBookAbi, agentRosterAbi, requireBuilderCode, HOUSE_AGENTS, makeContractsClient, makeContractsWallet } from "@btb/shared";
 import { kvGet, type Db } from "@btb/shared/db";
 import { runOnce } from "@btb/indexer";
 import { sendPost } from "@btb/telegram";
-import { botsDue, initAgents, nextBotToRebalance, rebalanceBot } from "@btb/bots";
+import { botsDue, botWeeklyAction, initAgents, nextBotToRebalance } from "@btb/bots";
 import { openWeek, publishResults, scoreWeek, type Results } from "./score";
 
 type Env = Record<string, string | undefined>;
 type Log = (s: string) => void;
 const nowS = () => Math.floor(Date.now() / 1000);
 
+/** The resolver's wallet on the contracts chain (Base Sepolia by default). Settles, relays signed picks and entries. */
 export function resolverWallet(env: Env = process.env) {
   const key = env.RESOLVER_PRIVATE_KEY as Hex | undefined;
   if (!key) throw new Error("RESOLVER_PRIVATE_KEY is not set");
-  return createWalletClient({
-    account: privateKeyToAccount(key),
-    chain: base,
-    transport: http(env.BASE_RPC_URL ?? "https://mainnet.base.org"),
-    dataSuffix: builderCodeSuffix(requireBuilderCode(env)),
-  });
+  return makeContractsWallet(key, env);
 }
 
 export async function scoreAndPublish(client: PublicClient, db: Db, week: number, o: { excluded?: string[]; dry?: boolean } = {}) {
@@ -30,7 +24,8 @@ export async function scoreAndPublish(client: PublicClient, db: Db, week: number
 }
 
 /** Pays a scored week: one PrizePool.settle per prize token. Weeks 1-2 need Kenichi's confirmation. */
-export async function settleWeek(client: PublicClient, db: Db, week: number, o: { approved?: boolean; env?: Env; log?: Log } = {}) {
+export async function settleWeek(_client: PublicClient, db: Db, week: number, o: { approved?: boolean; env?: Env; log?: Log } = {}) {
+  const client = makeContractsClient(o.env);
   const log = o.log ?? console.log;
   if (week <= 2 && !o.approved) throw new Error("Weeks 1-2: Kenichi confirms the winners are different people, then settle with --approved");
   const pool = contracts().prizePool;
@@ -61,8 +56,9 @@ export async function settleWeek(client: PublicClient, db: Db, week: number, o: 
 }
 
 /** Submits free-play picks that players signed while gas sponsorship was down (PickBook.lockFor). */
-export async function relaySigned(client: PublicClient, db: Db, env: Env = process.env) {
-  const pickBook = contracts().pickBook;
+export async function relaySigned(_client: PublicClient, db: Db, env: Env = process.env) {
+  const client = makeContractsClient(env);
+  const pickBook = contracts(env).pickBook;
   if (!pickBook || !env.RESOLVER_PRIVATE_KEY) return 0;
   const rows = await db.query<{ week: number; wallet: string; picks: { tokenIndex: number; weightBps: number }[]; deadline: string; signature: string }>(
     "select week, wallet, picks, deadline, signature from signed_locks where relayed_tx is null and error is null and deadline > $1",
@@ -77,6 +73,37 @@ export async function relaySigned(client: PublicClient, db: Db, env: Env = proce
       await db.query("update signed_locks set relayed_tx = $3 where week = $1 and wallet = $2", [r.week, r.wallet, hash]);
     } catch (e) {
       await db.query("update signed_locks set error = $3 where week = $1 and wallet = $2", [r.week, r.wallet, (e as Error).message.slice(0, 300)]);
+    }
+  }
+  return rows.length;
+}
+
+/**
+ * Submits agents' signed registrations with AgentRoster.registerFor (the resolver is the registrar). Used by agents
+ * whose wallets cannot send transactions on the contracts chain; their identity was checked when they signed.
+ */
+export async function relayRegistrations(db: Db, env: Env = process.env) {
+  const roster = contracts(env).agentRoster;
+  if (!roster || !env.RESOLVER_PRIVATE_KEY) return 0;
+  const client = makeContractsClient(env);
+  const rows = await db.query<{ wallet: string; erc8004_id: string; identity_chain: number; metadata_uri: string; deadline: string; signature: string }>(
+    "select wallet, erc8004_id, identity_chain, metadata_uri, deadline, signature from signed_registrations where relayed_tx is null and error is null and deadline > $1",
+    [nowS()],
+  );
+  if (!rows.length) return 0;
+  const wallet = resolverWallet(env);
+  const termsHash = await client.readContract({ address: roster, abi: agentRosterAbi, functionName: "termsHash" });
+  for (const r of rows) {
+    try {
+      const hash = await wallet.writeContract({
+        address: roster, abi: agentRosterAbi, functionName: "registerFor",
+        args: [r.wallet as Address, r.metadata_uri, BigInt(r.erc8004_id), BigInt(r.identity_chain), termsHash, BigInt(r.deadline), r.signature as Hex],
+      });
+      const rc = await client.waitForTransactionReceipt({ hash });
+      if (rc.status !== "success") throw new Error(`registerFor reverted: ${hash}`);
+      await db.query("update signed_registrations set relayed_tx = $2 where wallet = $1", [r.wallet, hash]);
+    } catch (e) {
+      await db.query("update signed_registrations set error = $2 where wallet = $1", [r.wallet, (e as Error).message.slice(0, 300)]);
     }
   }
   return rows.length;
@@ -136,15 +163,16 @@ export async function runTick(client: PublicClient, db: Db, o: { env?: Env; log?
     if (t >= s.scoreAt + 300 && !w?.results) await step("score week", async () => (await scoreAndPublish(client, db, week)).hash);
     // 5. From week 3, settle automatically if Kenichi turned it on.
     if (w?.results && !w.settle_txs && week >= 3 && env.RESOLVER_PRIVATE_KEY && (await kvGet(db, "auto_settle", false))) await step("settle", () => settleWeek(client, db, week, { env, log }));
-    // 6. Signed free-play picks, before entries close.
+    // 6. Signed free-play picks (before entries close) and signed agent entries.
     if (t < s.entryClose && env.RESOLVER_PRIVATE_KEY) await step("relay signed locks", async () => (await relaySigned(client, db, env)) || null);
-    // 7. One house bot per tick, after the US open on the week's first trading day.
-    if (HOUSE_AGENTS.some((a) => env[a.keyEnv]) && botsDue(t)) {
+    if (env.RESOLVER_PRIVATE_KEY) await step("relay signed agent entries", async () => (await relayRegistrations(db, env)) || null);
+    // 7. One house bot per tick: picks during the entry window (no-cost setup) or trades after the US open.
+    if (HOUSE_AGENTS.some((a) => env[a.keyEnv]) && botsDue(t, env)) {
       await step("bots", async () => {
         await initAgents(db, env, () => {});
         const next = await nextBotToRebalance(db, env, t);
         if (!next) return null;
-        return `${next.name} ${await rebalanceBot(next, { client, db, builderCode: requireBuilderCode(env), env, now: t, log })}`;
+        return `${next.name} ${await botWeeklyAction(next, { client, db, builderCode: requireBuilderCode(env), env, now: t, log })}`;
       });
     }
   } finally {
