@@ -25,6 +25,7 @@ export async function GET() {
   return page({
     lang,
     path: "/",
+    image: `/api/og/week/${tb.weekId}`,
     body: html`<h1>${t(lang, "tagline")}</h1>
 <p class="muted">${t(lang, "hero_line")}</p>
 <div class="row wrap" style="gap:10px;margin:12px 0 4px"><a class="btn" href="/trade">${t(lang, "cta_trade")}</a><a class="btn secondary" href="/play">${t(lang, "cta_play")}</a></div>

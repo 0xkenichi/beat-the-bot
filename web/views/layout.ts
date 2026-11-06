@@ -5,7 +5,9 @@ import { CSS } from "./styles";
 
 const NAV: [string, Parameters<typeof t>[1]][] = [["/", "nav_table"], ["/trade", "nav_trade"], ["/play", "nav_play"], ["/agents", "nav_agents"], ["/rules", "nav_rules"]];
 
-export type PageOpts = { title?: string; description?: string; lang: Lang; path: string; body: Raw; scripts?: string[]; status?: number };
+export type PageOpts = { title?: string; description?: string; lang: Lang; path: string; body: Raw; scripts?: string[]; status?: number; image?: string };
+
+const site = () => (process.env.NEXT_PUBLIC_SITE_URL ?? "").replace(/\/$/, "");
 
 export const ASSET_VERSION = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 8) ?? "dev";
 
@@ -23,6 +25,7 @@ export function page(o: PageOpts): Response {
 <meta name="description" content="${desc}">
 <meta property="og:title" content="${title}">
 <meta property="og:description" content="${desc}">
+${o.image ? html`<meta property="og:image" content="${site()}${o.image}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="${site()}${o.image}">` : html`<meta name="twitter:card" content="summary">`}
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <style>${raw(CSS)}</style>
 </head>

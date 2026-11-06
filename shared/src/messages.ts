@@ -37,7 +37,7 @@ export function resultsMessage(t: WeekTable, site: string): string {
 }
 
 /** The personal DM: "You beat Momentum and Steady. Contrarian beat you by 0.4%." */
-export function personalMessage(t: WeekTable, me: Row, prize?: { text: string; tx?: string }): string {
+export function personalMessage(t: WeekTable, me: Row, prize?: { text: string; tx?: string }, site?: string): string {
   const beaten = t.bots.filter((b) => me.ret > b.ret).map((b) => b.name);
   const above = t.bots.filter((b) => b.ret >= me.ret).sort((a, b) => a.ret - b.ret)[0];
   const parts = [`Week ${t.weekId}: you made ${pct(me.ret, 2)}.`];
@@ -45,5 +45,6 @@ export function personalMessage(t: WeekTable, me: Row, prize?: { text: string; t
   else if (beaten.length) parts.push(`You beat ${beaten.join(" and ")}.`);
   if (above) parts.push(`${above.name} beat you by ${((above.ret - me.ret) * 100).toFixed(1)}%.`);
   if (prize) parts.push(`Prize: ${prize.text}, in your wallet.${prize.tx ? ` Proof: https://basescan.org/tx/${prize.tx}` : ""}`);
+  if (site) parts.push(`\n\nShare your week: ${site}/p/${me.wallet.toLowerCase()}?week=${t.weekId}`);
   return parts.join(" ");
 }

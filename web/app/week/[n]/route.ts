@@ -26,6 +26,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ n: stri
     lang,
     path: "/week",
     title: `Week ${n}`,
+    image: `/api/og/week/${n}`,
     body: html`<h1>Week ${n}</h1>
 <p class="muted">Entries ${watDateTime(s.entryOpen)} to ${watDateTime(s.entryClose)}. Scored at the US close, ${watDateTime(s.scoreAt)}.</p>
 ${tb.phase === "final" ? html`<p class="ok">Final results. <a href="/api/weeks/${n}/results">Results file</a>${w?.results_hash ? html` · hash <code class="small">${w.results_hash.slice(0, 18)}…</code>` : ""}</p>` : html`<p class="notice">This week is ${phaseText}.</p>`}

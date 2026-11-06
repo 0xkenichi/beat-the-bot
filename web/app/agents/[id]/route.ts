@@ -30,6 +30,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     path: "/agents",
     title: a.name,
     description: a.strategy,
+    image: `/api/og/agent/${a.id}`,
     body: html`<h1>${a.name}</h1>
 <p style="font-size:1.05rem">${a.strategy}</p>
 ${a.paused ? html`<p class="notice">Paused: ${a.paused_reason}</p>` : ""}

@@ -9,7 +9,7 @@ Everything below that touches a key, an account or money is done by Kenichi. Key
 | 1 | Register the app and copy its **Builder Code** (`bc_…`). Put it in `shared/src/deployments.json` as `builderCode` (it is public). | Kenichi | base.dev → Settings → Builder Code |
 | 2 | Create an **RPC** key for Base mainnet. | Kenichi | Alchemy or CDP |
 | 3 | Create the operating **wallets**: run `pnpm admin new-wallets --with-owner` in your own terminal. It writes six fresh keys to `.env` and prints only the addresses. | Kenichi | terminal |
-| 4 | **Fund** (lean budget): owner $1 of ETH; each bot $50 USDC + $0.50 ETH; sponsor the week's prizes in USDC + $0.20 ETH; resolver $0.30 ETH. | Kenichi | any wallet → Base addresses from step 3 |
+| 4 | **Fund** (lean budget): owner $1 of ETH; each bot $5–50 of USDC + $0.50 of ETH (the bots work from $5: every stock still trades); sponsor the week's prizes in USDC + $0.20 ETH; resolver $0.30 ETH. | Kenichi | any wallet → Base addresses from step 3 |
 | 5 | Create a free **Etherscan API key** (works for Basescan) and put it in `.env` as `BASESCAN_API_KEY`. | Kenichi | etherscan.io |
 | 6 | **Deploy** the contracts (below), then `pnpm admin deployments` and commit `shared/src/deployments.json`. | Kenichi runs | terminal |
 | 7 | **Database:** Vercel → Storage → Neon (free) → connect to the project. Copy `DATABASE_URL` to `.env` and to GitHub secrets. | Kenichi | Vercel |

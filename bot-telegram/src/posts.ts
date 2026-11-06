@@ -45,7 +45,7 @@ export async function sendPost(db: Db, kind: PostKind, week: number, opts: { sit
       if (!me) continue;
       const win = w?.results?.winners?.find((x) => x.wallet.toLowerCase() === p.wallet);
       await bot.api
-        .sendMessage(Number(p.telegram_id), personalMessage(t, me, win ? { text: win.prizeText, tx: w?.settle_txs?.[0]?.tx } : undefined))
+        .sendMessage(Number(p.telegram_id), personalMessage(t, me, win ? { text: win.prizeText, tx: w?.settle_txs?.[0]?.tx } : undefined, opts.site))
         .catch((e) => console.log(`DM failed: ${(e as Error).message}`));
     }
   }

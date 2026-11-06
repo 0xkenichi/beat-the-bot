@@ -38,5 +38,6 @@ export const GUARDRAILS = {
   slippageBps: 100,
   maxOracleDeviationBps: 100,
   pauseBelowStartFraction: 0.5,
-  minTradeUsd: 1,
+  // Base gas is well under a cent per swap, so even a $5 bot can hold all ten stocks.
+  minTradeUsd: 0.25,
 } as const;
