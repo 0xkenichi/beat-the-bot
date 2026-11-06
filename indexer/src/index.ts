@@ -5,6 +5,8 @@ import { kvGet, kvSet, type Db } from "@btb/shared/db";
 const transferAbi = parseAbi(["event Transfer(address indexed from, address indexed to, uint256 value)"]);
 const TRANSFER = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 const CHUNK = Number(process.env.LOGS_CHUNK ?? 500);
+/** Where a cursor starts when none is stored: a little before the head, never below block 0. */
+const startBlock = (head: bigint, back: bigint) => (head > back ? head - back : 0n);
 
 /** Caches the latest Chainlink price per stock (the web pages read this instead of calling the chain). */
 export async function cachePrices(client: PublicClient, db: Db) {
@@ -44,7 +46,7 @@ async function getLogsChunked(client: PublicClient, params: { address: Address |
 export async function indexLocks(client: PublicClient, db: Db, head: bigint) {
   const pickBook = contracts().pickBook;
   if (!pickBook) return 0;
-  const from = BigInt(await kvGet<string>(db, "cursor:locks", String(DEPLOYMENTS.deployedBlock ?? head - 1000n)));
+  const from = BigInt(await kvGet<string>(db, "cursor:locks", String(DEPLOYMENTS.deployedBlock ?? startBlock(head, 1000n))));
   if (from > head) return 0;
   const raw = await getLogsChunked(client, { address: pickBook, topics: [] }, from, head);
   const events = parseEventLogs({ abi: pickBookAbi, logs: raw.map((l) => ({ ...l, blockNumber: BigInt(l.blockNumber), logIndex: Number(l.logIndex) })) as never, eventName: "Locked" });
@@ -69,7 +71,7 @@ export async function indexLocks(client: PublicClient, db: Db, head: bigint) {
 export async function indexRoster(client: PublicClient, db: Db, head: bigint) {
   const roster = contracts().agentRoster;
   if (!roster) return 0;
-  const from = BigInt(await kvGet<string>(db, "cursor:roster", String(DEPLOYMENTS.deployedBlock ?? head - 1000n)));
+  const from = BigInt(await kvGet<string>(db, "cursor:roster", String(DEPLOYMENTS.deployedBlock ?? startBlock(head, 1000n))));
   if (from > head) return 0;
   const raw = await getLogsChunked(client, { address: roster, topics: [] }, from, head);
   const logs = raw.map((l) => ({ ...l, blockNumber: BigInt(l.blockNumber), logIndex: Number(l.logIndex) })) as never;
@@ -100,7 +102,7 @@ export async function indexFlows(client: PublicClient, db: Db, head: bigint) {
     ...(await db.query<{ wallet: string }>("select wallet from players where non_us_confirmed_at is not null")),
     ...(await db.query<{ wallet: string }>("select wallet from agents")),
   ].map((r) => r.wallet.toLowerCase());
-  const from = BigInt(await kvGet<string>(db, "cursor:flows", String(head - 300n)));
+  const from = BigInt(await kvGet<string>(db, "cursor:flows", String(startBlock(head, 300n))));
   if (!wallets.length || from > head) {
     await kvSet(db, "cursor:flows", String(head + 1n));
     return 0;

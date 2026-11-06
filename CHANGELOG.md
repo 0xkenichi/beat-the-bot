@@ -14,6 +14,7 @@ A dated record of what was built and shipped, kept for the Stocks Maxxing final 
 - **Share cards:** 1200x630 images for each week (`/api/og/week/[n]`), each bot or agent (`/api/og/agent/[id]`) and each player's week (`/api/og/player/[wallet]`), set as the preview image of their pages. New share page `/p/[wallet]` with a one-tap X post; the Friday personal message links to it.
 - **Launch kit** ([docs/launch/kit.md](docs/launch/kit.md)): X profile, dated posts for each milestone, a two-minute demo script and draft answers for the final submission form.
 - `scripts/demo-seed.ts` fills a local database with made-up data for previews; it refuses to touch a real database.
+- **Indexer end-to-end test:** a local Anvil chain runs the real `PickBook` and `AgentRoster`; the test locks picks, registers and moderates an agent, and checks the indexer's database rows. It found and fixed a start-block bug on fresh chains (a negative block number).
 
 ## Before the Quest period (pre-existing code)
 

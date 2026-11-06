@@ -19,6 +19,6 @@ jobs:
       - uses: foundry-rs/foundry-toolchain@v1
       - run: pnpm install --frozen-lockfile
       - run: cd contracts && forge build && forge test
-      - run: pnpm --filter @btb/shared --filter @btb/bots --filter @btb/scoring test
+      - run: pnpm --filter @btb/shared --filter @btb/bots --filter @btb/scoring --filter @btb/indexer test
       - run: pnpm -r --if-present typecheck
       - run: pnpm --filter @btb/web build

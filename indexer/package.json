@@ -3,7 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "scripts": { "run": "tsx src/cli.ts", "typecheck": "tsc -p ." },
-  "dependencies": { "@btb/shared": "workspace:*", "viem": "2.57.7" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "run": "tsx src/cli.ts",
+    "typecheck": "tsc -p .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@btb/shared": "workspace:*",
+    "viem": "2.57.7"
+  }
 }
