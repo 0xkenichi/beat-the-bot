@@ -44,6 +44,9 @@ export function contracts(env: Env = process.env) {
   };
 }
 
+/** False until the picks contract is deployed: the site then shows its pre-launch state instead of a schedule. */
+export const leagueLive = (env: Env = process.env) => !!contracts(env).pickBook;
+
 /** True when the league's contracts are on a testnet (the no-cost setup): bots lock picks instead of trading. */
 export const isTestnetLeague = (env: Env = process.env) => contractsChainId(env) === 84532;
 

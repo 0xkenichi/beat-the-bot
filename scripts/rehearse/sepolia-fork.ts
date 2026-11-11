@@ -3,8 +3,9 @@
 //   pnpm rehearse            (needs Foundry's anvil and forge, a web build, and internet for the two public RPCs;
 //                             run it outside Monday's entry window, which it simulates for the coming week)
 //
-// It forks Base Sepolia with anvil and runs the runbook's own commands against the fork: the forge deploy,
-// `pnpm admin deployments / set-weeks / register-agents / status` and the bots' init. Then an outside agent that
+// It forks Base Sepolia with anvil and runs launch day against the fork: `pnpm launch` (its checks, the forge
+// deploy, deployments.json, weeks, the bots' init and identities, then again to show it skips finished steps) and
+// `pnpm admin status`. Then an outside agent that
 // never pays league gas joins and picks through the real web routes (the same calls a Bankr agent makes), and the
 // scheduler's tick runs twice: once now (the signed entry goes onchain, the early picks wait) and then on Monday
 // morning (the bots lock their picks and the agent's picks go in). Finally it checks the database, the web pages and
@@ -78,6 +79,10 @@ function check(cond: unknown, what: string, detail?: unknown) {
 }
 const step = (title: string) => console.log(`\n${title}`);
 
+function runMaybe(cmd: string, args: string[], o: { cwd?: string; env?: Record<string, string> } = {}) {
+  const r = spawnSync(cmd, args, { cwd: o.cwd ?? ROOT, env: { ...ENV, ...o.env }, encoding: "utf8", maxBuffer: 64 << 20 });
+  return { status: r.status, out: `${r.stdout ?? ""}${r.stderr ?? ""}` };
+}
 function run(cmd: string, args: string[], o: { cwd?: string; env?: Record<string, string> } = {}): string {
   const r = spawnSync(cmd, args, { cwd: o.cwd ?? ROOT, env: { ...ENV, ...o.env }, encoding: "utf8", maxBuffer: 64 << 20 });
   if (r.status !== 0) throw new Error(`${cmd} ${args.join(" ")} failed:\n${(r.stdout ?? "").slice(-2000)}\n${(r.stderr ?? "").slice(-2000)}`);
@@ -114,7 +119,7 @@ async function main() {
   const shared = await import("../../shared/src/index");
   const { openDb } = await import("../../shared/src/db");
   const { runTick } = await import("../../scoring/src/jobs");
-  const { UNIVERSE, weekSchedule, weekIdAt, GENESIS, hasBuilderCode, pickBookAbi, erc8004IdentityAbi, makeContractsWallet, makePublicClient, weekTable } = { ...shared, weekTable: (await import("../../shared/src/league")).weekTable };
+  const { UNIVERSE, weekSchedule, weekIdAt, hasBuilderCode, pickBookAbi, erc8004IdentityAbi, makeContractsWallet, makePublicClient, weekTable } = { ...shared, weekTable: (await import("../../shared/src/league")).weekTable };
 
   console.log(`Rehearsal folder: ${work}`);
   // The rehearsal plays the next week whose entries are still to open (week 1 before the season starts).
@@ -131,37 +136,45 @@ async function main() {
   const registryCode = await chain.getCode({ address: shared.CHAINS[84532].erc8004Identity });
   check(!!registryCode && registryCode.length > 2, "ERC-8004 Identity Registry is there");
 
-  step("2. Deploy, exactly as the runbook says");
-  const addr = (k: string) => privateKeyToAccount(k as Hex).address;
-  run(FORGE!, ["script", "script/Deploy.s.sol", "--rpc-url", rpc, "--private-key", KEYS.OWNER_PRIVATE_KEY, "--broadcast", "--slow"], {
-    cwd: join(ROOT, "contracts"),
-    env: { OWNER_ADDRESS: addr(KEYS.OWNER_PRIVATE_KEY), RESOLVER_ADDRESS: addr(KEYS.RESOLVER_PRIVATE_KEY), SPONSOR_ADDRESS: addr(KEYS.SPONSOR_PRIVATE_KEY), GENESIS: String(GENESIS) },
-  });
-  check(existsSync(join(ENV.FOUNDRY_BROADCAST!, "Deploy.s.sol/84532/run-latest.json")), "forge script deployed the three contracts (broadcast kept in the rehearsal folder)");
+  step("2. The site before launch");
+  const preSite = startProcess("pnpm", ["--dir", "web", "exec", "next", "start", "-p", String(webPort)]);
+  await waitFor(() => fetch(`${site}/api/agents/kit`).then((r) => { if (!r.ok) throw new Error(); }), "the site");
+  const home0 = await page("/");
+  check(home0.includes("Opening soon.") && home0.includes("How a week works") && !home0.includes("How this week is scored"), "the home page says it is opening soon and explains a week, with no schedule");
+  check((await page("/trade")).includes("Buying opens at launch"), "/trade shows live prices and says buying opens at launch");
+  check((await page("/play")).includes("Free play opens when the picks contract is live"), "/play says free play opens when the contract is live");
+  await stop(preSite);
+
+  step("3. pnpm launch: checks first, then deploy, weeks and bots");
   copyFileSync(join(ROOT, "shared/src/deployments.json"), ENV.DEPLOYMENTS_FILE!);
-  run("pnpm", ["admin", "deployments", "--chain", "84532"]);
+  if (Math.floor(Date.now() / 1000) >= weekSchedule(1).entryClose) {
+    const notReady = runMaybe("pnpm", ["launch", "--check"]);
+    check(notReady.status !== 0 && /pnpm admin season/.test(notReady.out) && /Nothing was sent/.test(notReady.out), "with week 1 already past, the checks stop and name the fix (pnpm admin season)", notReady.out.slice(-400));
+  }
+  const ready = run("pnpm", ["launch", "--check", "--keep-season"]);
+  check(ready.includes("Ready."), "pnpm launch --check passes with keys, gas, site and database in place");
+  run("pnpm", ["launch", "--keep-season", "--no-verify"]);
+  const broadcast = join(ENV.FOUNDRY_BROADCAST!, "Deploy.s.sol/84532/run-latest.json");
+  check(existsSync(broadcast), "forge deployed the three contracts (broadcast kept in the rehearsal folder)");
   const dep = JSON.parse(readFileSync(ENV.DEPLOYMENTS_FILE!, "utf8")).networks["84532"];
-  check(dep.pickBook && dep.prizePool && dep.agentRoster && dep.deployedBlock, "pnpm admin deployments recorded the addresses", dep);
+  check(dep.pickBook && dep.prizePool && dep.agentRoster && dep.deployedBlock, "the addresses are recorded in deployments.json", dep);
   Object.assign(ENV, { NEXT_PUBLIC_PICKBOOK: dep.pickBook, NEXT_PUBLIC_PRIZEPOOL: dep.prizePool, NEXT_PUBLIC_AGENTROSTER: dep.agentRoster });
   Object.assign(process.env, ENV);
-  const gasUsed = await Promise.all(
-    JSON.parse(readFileSync(join(ENV.FOUNDRY_BROADCAST!, "Deploy.s.sol/84532/run-latest.json"), "utf8")).receipts.map((r: { gasUsed: string; effectiveGasPrice: string }) => BigInt(r.gasUsed) * BigInt(r.effectiveGasPrice)),
-  );
+  const gasUsed = JSON.parse(readFileSync(broadcast, "utf8")).receipts.map((r: { gasUsed: string; effectiveGasPrice: string }) => BigInt(r.gasUsed) * BigInt(r.effectiveGasPrice));
   const deployEth = Number(gasUsed.reduce((a: bigint, b: bigint) => a + b, 0n)) / 1e18;
-  check(deployEth < 0.0002, `deploy cost ${deployEth.toFixed(7)} ETH at the fork's gas price (two faucet claims cover 0.0002)`);
+  check(deployEth < 0.0001, `deploy cost ${deployEth.toFixed(7)} ETH at the fork's gas price (one faucet claim is 0.0001)`);
+  const again = run("pnpm", ["launch", "--keep-season", "--no-verify"]);
+  check(/already deployed, skipped/.test(again) && /already set, skipped/.test(again) && /already registered, skipped/.test(again), "running pnpm launch again skips every finished step");
 
-  step("3. Weeks, bots and their identities");
-  run("pnpm", ["admin", "set-weeks", String(W), String(W + 1)]);
+  step("4. Weeks, bots and their identities");
   const [, , tokens] = await chain.readContract({ address: dep.pickBook, abi: pickBookAbi, functionName: "getWeek", args: [W] });
   check(tokens.length === UNIVERSE.length, `week ${W} is set with ${tokens.length} stocks`);
-  run("pnpm", ["--filter", "@btb/bots", "exec", "tsx", "src/cli.ts", "init"]);
-  run("pnpm", ["admin", "register-agents"]);
   const ids = JSON.parse(readFileSync(ENV.DEPLOYMENTS_FILE!, "utf8")).networks["84532"].agentIdentities;
   check(Object.keys(ids).length === 3, `three house bots registered: ${Object.entries(ids).map(([k, v]) => `${k} #${(v as { erc8004Id: string }).erc8004Id}`).join(", ")}`);
   const status = run("pnpm", ["admin", "status"]);
   check(status.includes("Base Sepolia (84532)"), "pnpm admin status shows the league chain");
 
-  step("4. An outside agent joins and picks by signature, through the web routes");
+  step("5. An outside agent joins and picks by signature, through the web routes");
   const webServer = startProcess("pnpm", ["--dir", "web", "exec", "next", "start", "-p", String(webPort)]);
   await waitFor(() => fetch(`${site}/api/agents/kit`).then((r) => { if (!r.ok) throw new Error(); }), "the site");
   const agent = privateKeyToAccount(AGENT_KEY);
@@ -197,7 +210,7 @@ async function main() {
   check(pick2.json.ok, `the signed picks are accepted ("${pick2.json.note ?? pick2.json.error}")`);
   await stop(webServer);
 
-  step("5. The scheduler, now (before entries open)");
+  step("6. The scheduler, now (before entries open)");
   const db = await openDb(ENV.DATABASE_URL);
   const base = makePublicClient();
   const quiet: string[] = [];
@@ -208,7 +221,7 @@ async function main() {
   const [early] = await db.query<{ relayed_tx: string | null; error: string | null }>("select relayed_tx, error from signed_locks where wallet = $1", [agent.address.toLowerCase()]);
   check(early && !early.relayed_tx && !early.error, "its early picks wait for the entry window (not sent, not failed)", early);
 
-  step(`6. Monday ${new Date(s.entryOpen * 1000).toISOString().slice(0, 10)}, 10 minutes after entries open`);
+  step(`7. Monday ${new Date(s.entryOpen * 1000).toISOString().slice(0, 10)}, 10 minutes after entries open`);
   let t = s.entryOpen + 600;
   await chain.request({ method: "evm_setNextBlockTimestamp" as never, params: [t] as never });
   await chain.request({ method: "evm_mine" as never, params: [] as never });
@@ -222,7 +235,7 @@ async function main() {
   await chain.waitForTransactionReceipt({ hash: lockHash });
   await runTick(base, db, { now: t, log: () => {} }); // indexes the last locks
 
-  step("7. What the league now shows");
+  step("8. What the league now shows");
   const locks = await db.query<{ wallet: string; tx_hash: string }>("select wallet, tx_hash from paper_locks where week = $1", [W]);
   const agents = await db.query<{ id: string; name: string; wallet: string; erc8004_id: string | null; identity_chain: number | null }>("select id, name, wallet, erc8004_id, identity_chain from agents order by id");
   const lockedBy = new Set(locks.map((l) => l.wallet));

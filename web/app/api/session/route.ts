@@ -7,6 +7,7 @@ const ownerAbi = parseAbi(["function isOwnerAddress(address account) view return
 
 /** Verifies the Sign in with Base message (smart-account signatures included) and starts a session. */
 export async function POST(req: Request) {
+  if (!process.env.SESSION_SECRET) return Response.json({ error: "Sign-in opens at launch." }, { status: 503 });
   const body = (await req.json().catch(() => null)) as { wallet?: string; universal?: string; message?: string; signature?: string } | null;
   if (!body?.message || !body.signature || !body.wallet || !body.universal || !isAddress(body.wallet) || !isAddress(body.universal)) {
     return Response.json({ error: "Missing sign-in data" }, { status: 400 });

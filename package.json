@@ -13,10 +13,11 @@
     "test:contracts": "cd contracts && forge test",
     "test:live": "tsx scripts/live/b20-hold-and-send.ts",
     "verify:chain": "tsx scripts/verify-chain.ts",
-    "typecheck": "pnpm -r --if-present typecheck",
+    "typecheck": "pnpm -r --if-present typecheck && tsc -p scripts",
     "metrics": "pnpm --filter @btb/scoring metrics",
     "admin": "tsx scripts/admin.ts",
-    "rehearse": "tsx scripts/rehearse/sepolia-fork.ts"
+    "rehearse": "tsx scripts/rehearse/sepolia-fork.ts",
+    "launch": "tsx scripts/launch.ts"
   },
   "devDependencies": {
     "@types/node": "26.6.5",

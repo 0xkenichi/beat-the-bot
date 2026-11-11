@@ -40,7 +40,7 @@ export async function GET() {
     scripts: state === "open" ? ["play.js"] : [],
     body: html`<h1>${t(lang, "play_title")}</h1>
 <p>${t(lang, "play_intro")}</p>
-<p class="small muted">Week ${wk}: entries ${when}.${pickBook ? html` Picks are recorded on ${CHAINS[chainId].name}${proof({ address: pickBook, chain: chainId })}` : ""}</p>
+${pickBook ? html`<p class="small muted">Week ${wk}: entries ${when}. Picks are recorded on ${CHAINS[chainId].name}${proof({ address: pickBook, chain: chainId })}</p>` : ""}
 ${lockRow ? html`<p class="ok">You're in for week ${wk}. ${proof({ tx: lockRow.tx_hash, label: "your lock", chain: chainId })}</p>` : ""}
 ${state === "not-deployed" ? html`<p class="notice">Free play opens when the picks contract is live onchain.</p>` : ""}
 ${state === "closed" ? html`<p class="notice">${t(lang, "picks_closed")}</p>` : ""}

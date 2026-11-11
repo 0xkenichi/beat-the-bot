@@ -15,7 +15,11 @@ export const client = () => makePublicClient();
 export type TradeMode = "live" | "view-only";
 
 /** Kill switch: TRADE_MODE env wins, then the database flag. View-only keeps prices, portfolio and sells visible. */
+/** Buying needs sign-in (SESSION_SECRET) and sponsored gas (PAYMASTER_URL); until both are set, /trade only shows prices. */
+export const tradingReady = () => !!process.env.SESSION_SECRET && !!process.env.PAYMASTER_URL;
+
 export async function tradeMode(): Promise<TradeMode> {
+  if (!tradingReady()) return "view-only";
   const env = process.env.TRADE_MODE;
   if (env === "live" || env === "view-only") return env;
   return (await kvGet<TradeMode>(await db(), "trade_mode", "live")) === "view-only" ? "view-only" : "live";

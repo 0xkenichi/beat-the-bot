@@ -26,18 +26,16 @@ The two paths share all the code. The league chain comes from `contractsChain` i
 | 3 | **RPC (optional):** a free Alchemy app with Base Mainnet and Base Sepolia. Put the URLs in `.env` as `BASE_RPC_URL` and `CONTRACTS_RPC_URL`. Without them the public endpoints are used, which are slower and rate-limited. | Kenichi | alchemy.com |
 | 4 | Create the operating **wallets**: run `pnpm admin new-wallets --with-owner` in your own terminal. It writes fresh keys to `.env` and prints only the addresses. | Kenichi | terminal |
 | 5 | **Testnet gas:** CDP Portal → Faucets → network *Base Sepolia*, token *ETH* → paste an address → Claim. Each claim is 0.0001 ETH (the limit is 1,000 claims a day). Claim twice for the owner, twice for the resolver and once for each bot: seven claims. At today's Base Sepolia gas price one claim covers the deploy, or about 140 weekly pick locks. `pnpm admin status` shows each balance. | Kenichi | CDP Portal |
-| 6 | **Deploy** the contracts to Base Sepolia (below). Verification goes to Blockscout and needs no API key. Then commit `shared/src/deployments.json`. | Kenichi runs | terminal |
-| 7 | **Database:** Vercel → Storage → Neon (free) → connect to the project. Copy `DATABASE_URL` to `.env`. | Kenichi | Vercel, on his own account (not the sideQuest one) |
-| 8 | **Website:** Vercel → New project → import `0xkenichi/beat-the-bot`, root directory `web`. Env: `NEXT_PUBLIC_SITE_URL`, `SESSION_SECRET` (any random 40 characters), `BASE_RPC_URL`, `CONTRACTS_RPC_URL`, `DATABASE_URL`, `PAYMASTER_URL_SEPOLIA`, `PAYMASTER_URL`, `TELEGRAM_*`. | Kenichi | Vercel, own account |
+| 6 | **Database and website:** Vercel (own account, not the sideQuest one) → New project → import `0xkenichi/beat-the-bot`, root directory `web` → Storage → Neon (free), which adds `DATABASE_URL` by itself. Until the contracts are live the site shows its pre-launch page: "Opening soon", how a week works, and live stock prices. | Kenichi, or Claude in his Chrome | Vercel |
+| 7 | **Site env:** `NEXT_PUBLIC_SITE_URL` (the project's URL), `SESSION_SECRET` (any random 40 characters, typed by Kenichi), `BASE_RPC_URL` and `CONTRACTS_RPC_URL` if you made them. Copy `NEXT_PUBLIC_SITE_URL` and `DATABASE_URL` into `.env` too. | Kenichi | Vercel |
+| 8 | **Launch:** `pnpm launch --check`, then `pnpm launch`. It checks the Builder Code, keys, gas, site and database first and sends nothing if one is missing. Then it deploys the contracts (verified on Blockscout, no key needed), records them in `shared/src/deployments.json`, sets the next four weeks, and registers the three bots' ERC-8004 identities and roster entries. If week 1 has already passed, it asks you to run `pnpm admin season` first. Commit and push `deployments.json` afterwards. Safe to re-run: finished steps are skipped. | Kenichi runs | terminal |
 | 9 | **Gas sponsorship on Base Sepolia** (free play): CDP Portal → Paymaster → network Base Sepolia → allowlist `PickBook` (address on `/contracts`) → copy the URL to Vercel as `PAYMASTER_URL_SEPOLIA`. If sponsorship is ever down, players sign their picks instead and the resolver submits them. | Kenichi | CDP Portal → Paymaster |
-| 10 | **Gas sponsorship on Base** (real-money trades): same page, network Base. Allowlist USDC, the ten stock tokens and the swap router. Per-user limit about $0.50 a day, global limit $10. Copy the URL to Vercel as `PAYMASTER_URL`. CDP bills mainnet sponsorship against the account's gas credits; if the portal asks for a payment method first, skip this step and run `pnpm admin kill-switch on`: `/trade` then shows prices and portfolios but does not buy, and everything else runs as normal. | Kenichi | CDP Portal → Paymaster |
-| 11 | **Weeks onchain:** `pnpm admin set-weeks 1 4` (owner key, Base Sepolia). | Kenichi runs | terminal |
-| 12 | **Bots:** `pnpm --filter @btb/bots exec tsx src/cli.ts init`, then `pnpm admin register-agents` (ERC-8004 identities and roster entries on Base Sepolia, from each bot wallet). From then on the scheduler locks each bot's picks every Monday. | Kenichi runs | terminal |
-| 13 | **Telegram:** BotFather → `/newbot`. Token to `TELEGRAM_BOT_TOKEN`, username to `TELEGRAM_BOT_USERNAME`, any random string to `TELEGRAM_WEBHOOK_SECRET`. Make a group, add the bot as admin, put the group's chat id in `TELEGRAM_GROUP_CHAT_ID`. Then `pnpm admin telegram-webhook`. | Kenichi | Telegram |
-| 14 | **Scheduler** (free): see *The scheduler* below. | Kenichi | Vercel + cron-job.org |
-| 15 | **Steady's model (optional):** any OpenAI-compatible free tier. Without it, Steady picks the steadiest stocks and says so on its page. | Kenichi | provider of choice |
-| 16 | **Pidgin copy:** `web/lib/copy.ts` (`pcm`) and `bot-telegram/src/pidgin.ts`. Missing lines fall back to English. | Kenichi | editor |
-| 17 | **base.dev check:** after the first user swap on Base, confirm it shows under the app. Picks on Base Sepolia carry the Builder Code too; base.dev may list only Base mainnet activity. | Kenichi | base.dev |
+| 10 | **Gas sponsorship on Base** (real-money trades): same page, network Base. Allowlist USDC, the ten stock tokens and the swap router. Per-user limit about $0.50 a day, global limit $10. Copy the URL to Vercel as `PAYMASTER_URL`. Buying on `/trade` turns on once `SESSION_SECRET` and `PAYMASTER_URL` are both set. CDP bills mainnet sponsorship against the account's gas credits; if the portal asks for a payment method first, skip this step: `/trade` keeps showing prices and everything else runs as normal. | Kenichi | CDP Portal → Paymaster |
+| 11 | **Telegram:** BotFather → `/newbot`. Token to `TELEGRAM_BOT_TOKEN`, username to `TELEGRAM_BOT_USERNAME`, any random string to `TELEGRAM_WEBHOOK_SECRET`. Make a group, add the bot as admin, put the group's chat id in `TELEGRAM_GROUP_CHAT_ID`. Then `pnpm admin telegram-webhook`. | Kenichi | Telegram |
+| 12 | **Scheduler** (free): see *The scheduler* below. | Kenichi | Vercel + cron-job.org |
+| 13 | **Steady's model (optional):** any OpenAI-compatible free tier. Without it, Steady picks the steadiest stocks and says so on its page. | Kenichi | provider of choice |
+| 14 | **Pidgin copy:** `web/lib/copy.ts` (`pcm`) and `bot-telegram/src/pidgin.ts`. Missing lines fall back to English. | Kenichi | editor |
+| 15 | **base.dev check:** after the first user swap on Base, confirm it shows under the app. Picks on Base Sepolia carry the Builder Code too; base.dev may list only Base mainnet activity. | Kenichi | base.dev |
 
 ### Rehearse first (optional, free, about five minutes)
 
@@ -45,11 +43,11 @@ The two paths share all the code. The league chain comes from `contractsChain` i
 pnpm rehearse
 ```
 
-It runs this whole setup on a local copy of Base Sepolia with throwaway development keys: the deploy below, `pnpm admin deployments`, `set-weeks`, the bots' `init`, `register-agents` and `status`, an outside agent joining and picking by signature through the site's routes, and the scheduler before and after Monday's entries open. It ends with checks on the database, the pages and the Builder Code on every transaction. It never reads your `.env` and never sends anything to a real chain.
+It runs launch day on a local copy of Base Sepolia with throwaway development keys: the pre-launch site, `pnpm launch` (checks, deploy, weeks, bots, then a second run that skips everything), `pnpm admin status`, an outside agent joining and picking by signature through the site's routes, and the scheduler before and after Monday's entries open. It ends with checks on the database, the pages and the Builder Code on every transaction. It never reads your `.env` and never sends anything to a real chain.
 
-### Deploying the contracts (Base Sepolia)
+### What `pnpm launch` does, by hand
 
-First pick the season's start: week 1 begins on a Monday at 00:00 UTC (01:00 WAT) and entries close at that day's US open. `pnpm admin season` sets it to the coming Monday (or `--start 2026-11-16`); commit `shared/src/deployments.json` with it. The prize contract is deployed with the same date, so do this before the deploy.
+The same steps, if you would rather run them one at a time. First pick the season's start: week 1 begins on a Monday at 00:00 UTC (01:00 WAT) and entries close at that day's US open. `pnpm admin season` sets it to the coming Monday (or `--start 2026-11-16`); commit `shared/src/deployments.json` with it. The prize contract is deployed with the same date, so do this before the deploy.
 
 ```bash
 pnpm admin season
@@ -62,6 +60,9 @@ cd contracts
 forge script script/Deploy.s.sol --rpc-url ${CONTRACTS_RPC_URL:-https://sepolia.base.org} --private-key $OWNER_PRIVATE_KEY --broadcast \
   --verify --verifier blockscout --verifier-url https://base-sepolia.blockscout.com/api/
 cd .. && pnpm admin deployments --chain 84532
+pnpm admin set-weeks 1 4
+pnpm --filter @btb/bots exec tsx src/cli.ts init
+pnpm admin register-agents
 ```
 
 The deploy script picks the ERC-8004 Identity Registry for the chain it runs on and makes the resolver the AgentRoster registrar, so it can submit agents' signed entries.
