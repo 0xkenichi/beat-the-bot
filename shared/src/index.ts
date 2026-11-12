@@ -17,3 +17,4 @@ export * from "./metrics";
 export * from "./messages";
 export * from "./blocks";
 export * from "./agentKit";
+export * from "./text";

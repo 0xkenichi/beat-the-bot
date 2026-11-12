@@ -2,6 +2,7 @@ import { table } from "@/lib/data";
 import { frame, OG, pctTxt, Badge } from "@/lib/og";
 import { validWallet } from "@btb/shared/agentKit";
 import { weekIdAt } from "@btb/shared/schedule";
+import { listText } from "@btb/shared/text";
 
 /** A player's week, for sharing: "I beat Momentum and Steady." */
 export async function GET(req: Request, { params }: { params: Promise<{ wallet: string }> }) {
@@ -12,7 +13,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ wallet: 
   const me = [...t.real, ...t.paper].find((r) => r.wallet.toLowerCase() === wallet);
   if (!me) return frame(<span style={{ fontSize: 56, fontWeight: 800 }}>Week {w}: pick three stocks and try to beat the bots.</span>);
   const beaten = t.bots.filter((b) => me.ret > b.ret).map((b) => b.name);
-  const headline = beaten.length === t.bots.length && t.bots.length ? "I beat all the bots" : beaten.length ? `I beat ${beaten.join(" and ")}` : "The bots won this one";
+  const headline = beaten.length === t.bots.length && t.bots.length ? "I beat all the bots" : beaten.length ? `I beat ${listText(beaten)}` : "The bots won this one";
   return frame(
     <div style={{ display: "flex", flexDirection: "column" }}>
       <span style={{ fontSize: 30, color: OG.muted }}>Week {w} · {me.tier === "real" ? "real money" : "free play"}</span>

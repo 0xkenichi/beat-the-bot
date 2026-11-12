@@ -6,6 +6,7 @@ import { proof } from "@/views/parts";
 import { pct } from "@/lib/format";
 import { validWallet } from "@btb/shared/agentKit";
 import { weekIdAt } from "@btb/shared/schedule";
+import { listText } from "@btb/shared/text";
 import { contractsChainId } from "@btb/shared/config";
 
 /** A player's week, made to be shared: the page's preview image is their result card. */
@@ -17,7 +18,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ wallet: 
   const t = await table(week);
   const me = [...t.real, ...t.paper].find((r) => r.wallet.toLowerCase() === wallet);
   const beaten = me ? t.bots.filter((b) => me.ret > b.ret).map((b) => b.name) : [];
-  const line = !me ? `Week ${week} on Beat the Bot` : beaten.length === t.bots.length && t.bots.length ? `I beat all the bots in week ${week}` : beaten.length ? `I beat ${beaten.join(" and ")} in week ${week}` : `The bots won week ${week}`;
+  const line = !me ? `Week ${week} on Beat the Bot` : beaten.length === t.bots.length && t.bots.length ? `I beat all the bots in week ${week}` : beaten.length ? `I beat ${listText(beaten)} in week ${week}` : `The bots won week ${week}`;
   const site = (process.env.NEXT_PUBLIC_SITE_URL ?? new URL(req.url).origin).replace(/\/$/, "");
   const shareUrl = `${site}/p/${wallet}?week=${week}`;
   const tweet = `${line}${me ? ` (${pct(me.ret, 2)})` : ""}. Pick three stocks on Base and try to beat the bots:`;

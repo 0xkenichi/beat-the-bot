@@ -2,6 +2,7 @@ import type { Row, WeekTable } from "./league";
 import { pct } from "./scoring";
 import { watTime } from "./schedule";
 import { explorerTx } from "./chain";
+import { listText } from "./text";
 
 /**
  * Telegram copy in English. The weekly message is the product's best writing: short, specific, with proof.
@@ -43,7 +44,7 @@ export function personalMessage(t: WeekTable, me: Row, prize?: { text: string; t
   const above = t.bots.filter((b) => b.ret >= me.ret).sort((a, b) => a.ret - b.ret)[0];
   const parts = [`Week ${t.weekId}: you made ${pct(me.ret, 2)}.`];
   if (beaten.length === t.bots.length && t.bots.length) parts.push(`You beat all ${t.bots.length} bots.`);
-  else if (beaten.length) parts.push(`You beat ${beaten.join(" and ")}.`);
+  else if (beaten.length) parts.push(`You beat ${listText(beaten)}.`);
   if (above) parts.push(`${above.name} beat you by ${((above.ret - me.ret) * 100).toFixed(1)}%.`);
   if (prize) parts.push(`Prize: ${prize.text}, in your wallet.${prize.tx ? ` Proof: ${explorerTx(prize.chainId ?? 8453, prize.tx)}` : ""}`);
   if (site) parts.push(`\n\nShare your week: ${site}/p/${me.wallet.toLowerCase()}?week=${t.weekId}`);

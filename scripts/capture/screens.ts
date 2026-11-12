@@ -42,10 +42,18 @@ const SHOTS: Shot[] = [
   phone("phone-rules", "/rules"),
   { name: "desktop-home", path: "/", w: 1280, h: 900, scale: 1.5, mobile: false },
 ];
+// The player card shows whoever leads this week, read from the demo database before the site opens it.
+process.env.BTB_NO_DOTENV = "1";
+const { openDb } = await import("../../shared/src/db");
+const { weekTable } = await import("../../shared/src/league");
+const demo = await openDb(`pglite:${DB}`);
+const table = await weekTable(demo);
+await demo.close();
+const leader = [...table.real, ...table.paper].sort((a, b) => b.ret - a.ret)[0];
 const CARDS = [
-  { name: "card-week", path: "/api/og/week/1" },
+  { name: "card-week", path: `/api/og/week/${table.weekId}` },
   { name: "card-momentum", path: "/api/og/agent/momentum" },
-  { name: "card-player", path: "/api/og/player/0x0000000000000000000000000000000000000c01?week=1" },
+  ...(leader ? [{ name: "card-player", path: `/api/og/player/${leader.wallet}?week=${table.weekId}` }] : []),
 ];
 
 /** A minimal DevTools Protocol client over Node's built-in WebSocket. */

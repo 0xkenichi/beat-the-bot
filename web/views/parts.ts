@@ -1,6 +1,7 @@
 import { html, raw, type Raw } from "@/lib/html";
 import { basescanToken, explorerAddress, explorerTx } from "@btb/shared/chain";
 import { contractsChainId } from "@btb/shared/config";
+import { listText } from "@btb/shared/text";
 import type { Row } from "@btb/shared/league";
 import { pct, usd } from "@/lib/format";
 
@@ -24,7 +25,7 @@ export function tierTable(o: { title: string; rows: Row[]; empty: string; showVa
 ${o.rows.map(
   (r) => html`<tr><td class="rank">${r.rank}</td><td>${r.agentId ? html`<a href="/agents/${r.agentId}"><b>${r.name}</b></a>` : html`<span>${r.name}</span>`}${r.beatTheBot ? html` <span class="badge">${o.beatLabel}</span>` : ""}
 ${r.picks ? html`<div class="small muted">${r.picks.map((p) => `${p.ticker} ${Math.round(p.weightBps / 100)}%`).join(" · ")}${proof({ tx: r.lockedTx, label: "lock", chain: contractsChainId() })}</div>` : ""}
-${!r.beatTheBot && r.beats?.length ? html`<div class="small muted">Beat ${r.beats.join(" and ")}</div>` : ""}</td>
+${!r.beatTheBot && r.beats?.length ? html`<div class="small muted">Beat ${listText(r.beats)}</div>` : ""}</td>
 ${showValue ? html`<td class="num">${r.valueUsd != null ? usd(r.valueUsd) : "–"}${proof({ address: r.wallet })}</td>` : ""}
 <td class="num ${r.ret >= 0 ? "up" : "down"}">${pct(r.ret, 2)}</td></tr>`,
 )}
