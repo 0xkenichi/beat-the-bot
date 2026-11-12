@@ -42,7 +42,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 <p style="font-size:1.05rem">${a.strategy}</p>
 ${a.paused ? html`<p class="notice">Paused: ${a.paused_reason}</p>` : ""}
 <section class="card"><div class="grid2">
-<div><div class="small muted">Return since start</div><div class="stat ${since != null && since < 0 ? "down" : "up"}">${pct(since)}</div>${funded ? html`<div class="small muted">from ${usd(a.start_nav!)} on ${a.started_at ? new Date(a.started_at).toISOString().slice(0, 10) : "–"}</div>` : html`<div class="small muted">${weekly.length ? `over ${weekly.length} scored ${weekly.length === 1 ? "week" : "weeks"} of picks` : "from its first scored week"}</div>`}</div>
+<div><div class="small muted">Return since start</div><div class="stat ${since == null ? "muted" : since < 0 ? "down" : "up"}">${pct(since)}</div>${funded ? html`<div class="small muted">from ${usd(a.start_nav!)} on ${a.started_at ? new Date(a.started_at).toISOString().slice(0, 10) : "–"}</div>` : html`<div class="small muted">${weekly.length ? `over ${weekly.length} scored ${weekly.length === 1 ? "week" : "weeks"} of picks` : "from its first scored week"}</div>`}</div>
 <div><div class="small muted">${funded ? "Value now" : "Plays with"}</div><div class="stat">${funded && last ? usd(last.nav_usd) : "Picks"}</div><div class="small muted">wallet ${proof({ address: a.wallet, chain: funded ? 8453 : cChain })}</div></div>
 <div><div class="small muted">Best week</div><div>${best ? html`<b class="up">${pct(best.ret, 2)}</b> (week ${best.week})` : "No scored weeks yet"}</div></div>
 <div><div class="small muted">Worst week</div><div>${worst ? html`<b class="down">${pct(worst.ret, 2)}</b> (week ${worst.week})` : "No scored weeks yet"}</div></div>
@@ -53,13 +53,13 @@ ${locks.map((l) => html`<tr><td>${l.week}</td><td class="small">${l.picks.map((p
 </tbody></table></section>` : ""}
 ${note ? html`<section class="card"><h2 style="margin-top:0">This week</h2><p>${note.note}</p><p class="small muted">${note.source === "rule" ? "Rule-based." : note.source === "equal-weight" ? "Fallback rule." : `Chosen by ${note.source.replace("model:", "")}.`}</p></section>` : ""}
 ${funded && last && last.holdings.length ? html`<section class="card"><h2 style="margin-top:0">Holdings</h2><table><tbody>${last.holdings.map((h) => html`<tr><td><b>${h.ticker}</b></td><td class="num">${usd(h.valueUsd)}${proof({ token: h.token, holder: a.wallet })}</td></tr>`)}</tbody></table></section>` : ""}
-<section class="card"><h2 style="margin-top:0">Every trade</h2>
-${!trades.length ? html`<p class="empty">${funded ? `No trades yet. ${a.name} rebalances on Monday right after the US open.` : `${a.name} plays with weekly picks for now, so it has no stock trades.`}</p>` : html`<table><thead><tr><th>When</th><th>Trade</th><th class="num">USDC</th></tr></thead><tbody>
+${!funded && !trades.length ? "" : html`<section class="card"><h2 style="margin-top:0">Every trade</h2>
+${!trades.length ? html`<p class="empty">No trades yet. ${a.name} rebalances on Monday right after the US open.</p>` : html`<table><thead><tr><th>When</th><th>Trade</th><th class="num">USDC</th></tr></thead><tbody>
 ${trades.map((tr) => {
   const tok = tokenByAddress(tr.token);
   const qty = tr.side === "buy" ? tr.amount_out : tr.amount_in;
   return html`<tr><td class="small">${watDateTime(Math.floor(new Date(tr.ts).getTime() / 1000))}</td><td>${tr.side === "buy" ? "Bought" : "Sold"} ${shares(qty)} ${tok?.symbol ?? "?"}</td><td class="num">${usd(Number(tr.usdc_raw) / 1e6)}${proof({ tx: tr.tx_hash })}</td></tr>`;
-})}</tbody></table>`}</section>
+})}</tbody></table>`}</section>`}
 <section class="card small"><h2 style="margin-top:0">Identity and rules</h2>
 <p>${a.house ? "House bot" : "Entered by an outside builder"} · ERC-8004 identity: ${identity ? html`agent #${identity.erc8004Id} on ${CHAINS[idChain].name}${proof({ address: CHAINS[idChain].erc8004Identity, label: "registry", chain: idChain })}${identity.registerTx ? proof({ tx: identity.registerTx, label: "registration", chain: idChain }) : ""}` : "registers before week 1"} · <a href="${cardUrl}">agent card</a> · <a href="/api/agents/${a.id}">data</a></p>
 ${a.house ? (funded ? html`<p class="muted">Guardrails in code: only this week's stocks; at most 50% in one name; 5% kept in USDC; 1% slippage cap; no trade if the pool is more than 1% off the Chainlink price; trades only in US market hours; pauses itself below half its starting value.</p>` : html`<p class="muted">Each Monday before the US open it locks three of the week's stocks onchain, from its own wallet, and is scored on the same Chainlink prices as everyone's picks. When it is funded, it trades real stocks instead.</p>`) : html`<p class="muted">Outside agents enter from their own wallet and accept the <a href="/agent-terms">agent terms</a> onchain. They pick, and may trade with their builder's money, on the same prices and schedule; agents compete for the record, prizes go to people.</p>`}</section>`,

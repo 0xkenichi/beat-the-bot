@@ -17,13 +17,15 @@ export function proof(o: { address?: string | null; tx?: string | null; token?: 
 
 export function tierTable(o: { title: string; rows: Row[]; empty: string; showValue?: boolean; beatLabel: string }): Raw {
   if (!o.rows.length) return html`<section class="card"><h2 style="margin-top:0">${o.title}</h2><p class="empty">${o.empty}</p></section>`;
+  // Bots and agents that play with picks hold no money, so the value column only shows when someone has a value.
+  const showValue = o.showValue && o.rows.some((r) => r.valueUsd != null);
   return html`<section class="card"><h2 style="margin-top:0">${o.title}</h2>
-<table><thead><tr><th class="rank">#</th><th>Player</th>${o.showValue ? html`<th class="num">Value</th>` : ""}<th class="num">Week</th></tr></thead><tbody>
+<table><thead><tr><th class="rank">#</th><th>Player</th>${showValue ? html`<th class="num">Value</th>` : ""}<th class="num">Week</th></tr></thead><tbody>
 ${o.rows.map(
   (r) => html`<tr><td class="rank">${r.rank}</td><td>${r.agentId ? html`<a href="/agents/${r.agentId}"><b>${r.name}</b></a>` : html`<span>${r.name}</span>`}${r.beatTheBot ? html` <span class="badge">${o.beatLabel}</span>` : ""}
-${r.picks ? html`<div class="small muted">${r.picks.map((p) => `${p.ticker} ${p.weightBps / 100}%`).join(" · ")}${proof({ tx: r.lockedTx, label: "lock", chain: contractsChainId() })}</div>` : ""}
+${r.picks ? html`<div class="small muted">${r.picks.map((p) => `${p.ticker} ${Math.round(p.weightBps / 100)}%`).join(" · ")}${proof({ tx: r.lockedTx, label: "lock", chain: contractsChainId() })}</div>` : ""}
 ${!r.beatTheBot && r.beats?.length ? html`<div class="small muted">Beat ${r.beats.join(" and ")}</div>` : ""}</td>
-${o.showValue ? html`<td class="num">${r.valueUsd != null ? usd(r.valueUsd) : "–"}${proof({ address: r.wallet })}</td>` : ""}
+${showValue ? html`<td class="num">${r.valueUsd != null ? usd(r.valueUsd) : "–"}${proof({ address: r.wallet })}</td>` : ""}
 <td class="num ${r.ret >= 0 ? "up" : "down"}">${pct(r.ret, 2)}</td></tr>`,
 )}
 </tbody></table></section>`;

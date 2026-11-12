@@ -1,6 +1,7 @@
 import { table } from "@/lib/data";
 import { frame, OG, pctTxt, Badge } from "@/lib/og";
 import { weekIdAt } from "@btb/shared/schedule";
+import { botsMode } from "@btb/shared/config";
 
 /** Share card for a week: the bots, and the humans who beat them. /api/og/week/current works too. */
 export async function GET(_req: Request, { params }: { params: Promise<{ n: string }> }) {
@@ -20,11 +21,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ n: stri
       <div style={{ display: "flex", gap: 40, marginTop: 28 }}>
         <div style={{ display: "flex", flexDirection: "column", width: 500, gap: 12 }}>
           <span style={{ fontSize: 26, color: OG.muted }}>The bots</span>
-          {t.bots.length ? t.bots.slice(0, 4).map((b) => (
+          {t.bots.length ? t.bots.slice(0, 3).map((b) => (
             <div key={b.wallet} style={{ display: "flex", justifyContent: "space-between", background: OG.card, borderRadius: 14, padding: "12px 20px" }}>
               <span>{b.name}</span><span style={{ color: b.ret >= 0 ? OG.up : OG.down }}>{pctTxt(b.ret)}</span>
             </div>
-          )) : <span style={{ color: OG.muted }}>Three AI bots, real money, real trades.</span>}
+          )) : <span style={{ color: OG.muted }}>{botsMode() === "picks" ? "Three AI bots pick every Monday." : "Three AI bots, real money, real trades."}</span>}
         </div>
         <div style={{ display: "flex", flexDirection: "column", width: 520, gap: 12 }}>
           <span style={{ fontSize: 26, color: OG.muted }}>{beat ? `${beat} ${beat === 1 ? "human" : "humans"} beat the bots` : "The humans"}</span>

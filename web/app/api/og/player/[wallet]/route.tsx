@@ -23,7 +23,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ wallet: 
       <div style={{ display: "flex", gap: 28, marginTop: 30, fontSize: 40 }}>
         <span>{me.name}</span>
         <span style={{ color: me.ret >= 0 ? OG.up : OG.down, fontWeight: 800 }}>{pctTxt(me.ret)}</span>
-        {me.picks ? <span style={{ color: OG.muted, fontSize: 32 }}>{me.picks.map((p) => `${p.ticker} ${p.weightBps / 100}%`).join(" · ")}</span> : null}
+        {me.picks ? <span style={{ color: OG.muted, fontSize: 32 }}>{me.picks.map((p) => `${p.ticker} ${Math.round(p.weightBps / 100)}%`).join(" · ")}</span> : null}
       </div>
       <div style={{ display: "flex", gap: 14, marginTop: 30 }}>
         {t.bots.slice(0, 3).map((b) => (

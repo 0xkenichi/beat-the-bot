@@ -4,7 +4,7 @@ import { ImageResponse } from "next/og";
 export const OG = { w: 1200, h: 630, bg: "#0f1013", card: "#17181d", ink: "#f1f1ee", muted: "#a3a6b3", brand: "#4d8bff", up: "#3ccf7a", down: "#ff6b5e", badge: "#ffd23f" };
 export const pctTxt = (r: number | null | undefined, d = 2) => (r == null || !Number.isFinite(r) ? "–" : `${r >= 0 ? "+" : ""}${(r * 100).toFixed(d)}%`);
 
-export function frame(children: React.ReactNode, footer = "Prices: Chainlink on Base · every trade on Basescan") {
+export function frame(children: React.ReactNode, footer = "Prices: Chainlink on Base · every pick and trade onchain") {
   return new ImageResponse(
     (
       <div style={{ width: OG.w, height: OG.h, background: OG.bg, color: OG.ink, display: "flex", flexDirection: "column", padding: "56px 64px", fontSize: 32 }}>

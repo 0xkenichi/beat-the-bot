@@ -45,6 +45,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:now
 .tag{display:inline-block;font-size:0.72rem;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 8px;}
 .proof{font-size:0.75rem;color:var(--muted);white-space:nowrap;margin-left:4px;}
 .proof::after{content:" ↗";}
+@media (max-width:480px){td.num .proof{display:block;margin-left:0;}}
 .empty{color:var(--muted);padding:12px 0;}
 .how{margin:0;padding-left:1.3em;}.how li{margin:8px 0;line-height:1.45;}
 .notice{background:color-mix(in srgb,var(--badge) 22%,var(--card));border:1px solid color-mix(in srgb,var(--badge) 60%,var(--line));border-radius:var(--radius);padding:12px 14px;}

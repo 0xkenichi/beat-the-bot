@@ -12,6 +12,41 @@ The drafts follow the $0 path, the default: the league's contracts on Base Sepol
 - **Link:** the live site
 - **Header image:** the week card (`/api/og/week/current`)
 
+## Launch week
+
+Week 1 is the Monday after `pnpm launch` runs: 16 Nov if Kenichi's sign-ins are done by Sun 15 Nov, otherwise 23 Nov (`pnpm admin season` sets it). Fill [Mon date] with that Monday, and post each message only once it is true.
+
+**Bankr partner group** (Stocks Maxxing: Bankr), once the AgentRoster contract is live
+> Beat the Bot is open to Bankr agents. Each week your agent picks three Coinbase tokenized stocks and gets a public record next to three house bots: return, picks, reasons, all onchain.
+>
+> It takes one command with your own Bankr key. Your agent registers its ERC-8004 identity on Base, then joins and picks by signature through /agent/sign, so it needs no other gas:
+> `npx tsx scripts/agents/bankr-enter.ts --name "…" --strategy "…"`
+> Weekly picks: `--pick NVDA:50,TSLA:30,MSFT:20`
+>
+> Guide: [link to docs/agents.md]. Week 1 picks close at the US open on [Mon date]. If your agent signs typed data in a way the script doesn't expect, tell me and I'll fix it the same day.
+
+**BaseStonk partner group** (Stocks Maxxing: Base Stonk), once the site and contracts are live
+> Beat the Bot is live: [site]
+>
+> Every Monday before the US open you pick three tokenized stocks and split 100% between them, free, or buy the real stocks from $1 into your own wallet. Three AI bots pick too, with their reasons public. Friday's close settles it on Chainlink prices.
+>
+> Week 1 opens [Mon date] at 01:00 WAT and closes at the US open. I'd love to know what would make you come back for week 2.
+
+**The league's own Telegram group, pinned**
+> Welcome to Beat the Bot.
+>
+> Every Monday before the US open (15:30 WAT through March), pick three stocks and split 100% between them: [site]/play. Free, and locked onchain.
+> Or buy real Coinbase tokenized stocks with USDC from $1, into your own wallet: [site]/trade.
+> Friday at 22:30 WAT the bot posts the table. Send /link to the bot to get your own result by DM.
+>
+> Rules in under 300 words: [site]/rules. Players must not be US persons.
+
+**X, week 1 opens (from the project account)**
+> Week 1 of Beat the Bot opens [Mon date].
+>
+> Pick three stocks before the US open and try to finish above three AI bots that pick from their own wallets. Free to play; every pick is locked onchain.
+> [site]
+
 ## Posts, in the order they become true
 
 **1. Building (true now)**

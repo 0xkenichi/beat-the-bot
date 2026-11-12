@@ -11,14 +11,14 @@ export const HOUSE_AGENTS: HouseAgent[] = [
   {
     id: "momentum",
     name: "Momentum",
-    strategy: "Buys the three stocks that rose most over the last five trading days, in equal parts.",
+    strategy: "Backs the three stocks that rose most over the last five trading days, in equal parts.",
     keyEnv: "BOT_MOMENTUM_PRIVATE_KEY",
     addressEnv: "BOT_MOMENTUM_ADDRESS",
   },
   {
     id: "contrarian",
     name: "Contrarian",
-    strategy: "Buys the three stocks that fell most over the last five trading days, in equal parts.",
+    strategy: "Backs the three stocks that fell most over the last five trading days, in equal parts.",
     keyEnv: "BOT_CONTRARIAN_PRIVATE_KEY",
     addressEnv: "BOT_CONTRARIAN_ADDRESS",
   },
