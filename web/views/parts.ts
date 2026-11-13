@@ -16,15 +16,21 @@ export function proof(o: { address?: string | null; tx?: string | null; token?: 
   return html`<a class="proof" href="${href}" target="_blank" rel="noopener noreferrer">${o.label ?? "Basescan"}</a>`;
 }
 
+/** A bot's coloured tile: the house bots have their own colour and arrow; outside agents get the first letter. */
+export function botTile(id: string, name: string): Raw {
+  const house: Record<string, string> = { momentum: "↗", contrarian: "↘", steady: "≈" };
+  return html`<span class="tile ${house[id] ? `t-${id}` : "t-agent"}" aria-hidden="true">${house[id] ?? name.slice(0, 1).toUpperCase()}</span>`;
+}
+
 export function tierTable(o: { title: string; rows: Row[]; empty: string; showValue?: boolean; beatLabel: string }): Raw {
-  if (!o.rows.length) return html`<section class="card"><h2 style="margin-top:0">${o.title}</h2><p class="empty">${o.empty}</p></section>`;
+  if (!o.rows.length) return html`<section class="card"><h2>${o.title}</h2><p class="empty">${o.empty}</p></section>`;
   // Bots and agents that play with picks hold no money, so the value column only shows when someone has a value.
   const showValue = o.showValue && o.rows.some((r) => r.valueUsd != null);
-  return html`<section class="card"><h2 style="margin-top:0">${o.title}</h2>
+  return html`<section class="card"><h2>${o.title}</h2>
 <table><thead><tr><th class="rank">#</th><th>Player</th>${showValue ? html`<th class="num">Value</th>` : ""}<th class="num">Week</th></tr></thead><tbody>
 ${o.rows.map(
-  (r) => html`<tr><td class="rank">${r.rank}</td><td>${r.agentId ? html`<a href="/agents/${r.agentId}"><b>${r.name}</b></a>` : html`<span>${r.name}</span>`}${r.beatTheBot ? html` <span class="badge">${o.beatLabel}</span>` : ""}
-${r.picks ? html`<div class="small muted">${r.picks.map((p) => `${p.ticker} ${Math.round(p.weightBps / 100)}%`).join(" · ")}${proof({ tx: r.lockedTx, label: "lock", chain: contractsChainId() })}</div>` : ""}
+  (r) => html`<tr><td class="rank">${r.rank}</td><td><div class="who">${r.agentId ? html`${botTile(r.agentId, r.name)}<a href="/agents/${r.agentId}">${r.name}</a>` : html`<span class="name">${r.name}</span>`}${r.beatTheBot ? html`<span class="badge">${o.beatLabel}</span>` : ""}</div>
+${r.picks ? html`<div class="picks">${r.picks.map((p) => html`<span class="tag">${p.ticker} ${Math.round(p.weightBps / 100)}%</span>`)}${proof({ tx: r.lockedTx, label: "lock", chain: contractsChainId() })}</div>` : ""}
 ${!r.beatTheBot && r.beats?.length ? html`<div class="small muted">Beat ${listText(r.beats)}</div>` : ""}</td>
 ${showValue ? html`<td class="num">${r.valueUsd != null ? usd(r.valueUsd) : "–"}${proof({ address: r.wallet })}</td>` : ""}
 <td class="num ${r.ret >= 0 ? "up" : "down"}">${pct(r.ret, 2)}</td></tr>`,

@@ -19,20 +19,29 @@ if (!existsSync(DB)) throw new Error("Run the demo seed first: DATABASE_URL=pgli
 if (!existsSync(join(ROOT, "web/.next/BUILD_ID"))) throw new Error("Build the site first: pnpm --dir web exec next build");
 
 const port = 9400 + Math.floor(Math.random() * 300);
-const site = `http://127.0.0.1:${port}`;
-// Placeholder contract addresses put the site in its live state; nothing here talks to a real contract.
-const env = {
+const SCHEME = process.env.SCREENS_SCHEME ?? "light"; // light or dark
+const base = {
   PATH: process.env.PATH ?? "", HOME: homedir(), TMPDIR: tmpdir(), BTB_NO_DOTENV: "1", NEXT_TELEMETRY_DISABLED: "1",
   DATABASE_URL: `pglite:${DB}`, CONTRACTS_CHAIN_ID: "84532", BUILDER_CODE: "bc_preview",
+  BASE_RPC_URL: process.env.BASE_RPC_URL ?? "https://base-mainnet.g.alchemy.com/public",
+};
+// Before launch the site has no contracts, sign-in or sponsored gas. For the live pages, placeholder contract
+// addresses and settings put it in its launched state; nothing here talks to a real contract or paymaster.
+const PRELAUNCH = base;
+const LIVE = {
+  ...base,
   NEXT_PUBLIC_PICKBOOK: "0x1111111111111111111111111111111111111111", NEXT_PUBLIC_AGENTROSTER: "0x2222222222222222222222222222222222222222",
   NEXT_PUBLIC_PRIZEPOOL: "0x3333333333333333333333333333333333333333",
   SESSION_SECRET: "local-preview-only-not-a-secret-0123456789", PAYMASTER_URL: "http://127.0.0.1:1/preview",
-  BASE_RPC_URL: process.env.BASE_RPC_URL ?? "https://base-mainnet.g.alchemy.com/public",
 };
 
 // h caps the height: the shot is the full page up to h CSS pixels.
 type Shot = { name: string; path: string; w: number; h: number; scale: number; mobile: boolean };
 const phone = (name: string, path: string, h = 1500): Shot => ({ name, path, w: 390, h, scale: 2, mobile: true });
+const PRELAUNCH_SHOTS: Shot[] = [
+  phone("phone-prelaunch", "/"),
+  { name: "desktop-prelaunch", path: "/", w: 1280, h: 900, scale: 1.5, mobile: false },
+];
 const SHOTS: Shot[] = [
   phone("phone-home", "/"),
   phone("phone-agents", "/agents"),
@@ -77,16 +86,23 @@ async function devtools(wsUrl: string) {
   return { send, once, close: () => ws.close() };
 }
 
-const server = spawn("pnpm", ["--dir", "web", "exec", "next", "start", "-p", String(port)], { cwd: ROOT, env, stdio: "ignore" });
-const profile = mkdtempSync(join(tmpdir(), "btb-chrome-"));
-const cdpPort = port + 1000;
-const chrome = spawn(CHROME, ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run", "--no-default-browser-check", `--user-data-dir=${profile}`, `--remote-debugging-port=${cdpPort}`, "about:blank"], { stdio: "ignore" });
-try {
+/** Starts the site with `env` and waits until it answers. */
+async function startSite(env: Record<string, string>) {
+  const site = `http://127.0.0.1:${port}`;
+  const server = spawn("pnpm", ["--dir", "web", "exec", "next", "start", "-p", String(port)], { cwd: ROOT, env, stdio: "ignore" });
   for (let i = 0; ; i++) {
     try { if ((await fetch(`${site}/rules`)).ok) break; } catch { /* starting */ }
     if (i > 150) throw new Error("the site did not start");
     await new Promise((r) => setTimeout(r, 200));
   }
+  const stop = async () => { server.kill("SIGTERM"); await new Promise((r) => (server.exitCode !== null ? r(null) : server.once("exit", r))); };
+  return { site, stop };
+}
+
+const profile = mkdtempSync(join(tmpdir(), "btb-chrome-"));
+const cdpPort = port + 1000;
+const chrome = spawn(CHROME, ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run", "--no-default-browser-check", `--user-data-dir=${profile}`, `--remote-debugging-port=${cdpPort}`, "about:blank"], { stdio: "ignore" });
+try {
   mkdirSync(OUT, { recursive: true });
   let pageWs = "";
   for (let i = 0; !pageWs; i++) {
@@ -95,32 +111,45 @@ try {
   }
   const cdp = await devtools(pageWs);
   await cdp.send("Page.enable");
-  for (const s of SHOTS) {
-    await fetch(`${site}${s.path}`); // warm the page so the screenshot doesn't catch a cold start
-    await cdp.send("Emulation.setDeviceMetricsOverride", { width: s.w, height: 844, deviceScaleFactor: s.scale, mobile: s.mobile });
-    const loaded = cdp.once("Page.loadEventFired", 15_000);
-    await cdp.send("Page.navigate", { url: `${site}${s.path}` });
-    await loaded;
-    await new Promise((r) => setTimeout(r, 800)); // countdowns and fonts settle
-    const { result } = (await cdp.send("Runtime.evaluate", { expression: "[document.documentElement.scrollHeight, document.documentElement.scrollWidth]", returnByValue: true })) as { result: { value: [number, number] } };
-    const [height, width] = result.value;
-    if (width > s.w) console.log(`  warning: ${s.path} is ${width}px wide at ${s.w}px (horizontal scroll)`);
-    const h = s.mobile ? Math.min(height, s.h) : s.h;
-    await cdp.send("Emulation.setDeviceMetricsOverride", { width: s.w, height: h, deviceScaleFactor: s.scale, mobile: s.mobile });
-    const shot = (await cdp.send("Page.captureScreenshot", { format: "png" })) as { data: string };
-    writeFileSync(join(OUT, `${s.name}.png`), Buffer.from(shot.data, "base64"));
-    console.log(`  ${s.name}.png  ${s.path}  ${s.w}x${h}`);
+  await cdp.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: SCHEME }] });
+  const shoot = async (site: string, shots: Shot[]) => {
+    for (const s of shots) {
+      await fetch(`${site}${s.path}`); // warm the page so the screenshot doesn't catch a cold start
+      await cdp.send("Emulation.setDeviceMetricsOverride", { width: s.w, height: 844, deviceScaleFactor: s.scale, mobile: s.mobile });
+      const loaded = cdp.once("Page.loadEventFired", 15_000);
+      await cdp.send("Page.navigate", { url: `${site}${s.path}` });
+      await loaded;
+      await new Promise((r) => setTimeout(r, 800)); // countdowns and fonts settle
+      const { result } = (await cdp.send("Runtime.evaluate", { expression: "[document.documentElement.scrollHeight, document.documentElement.scrollWidth]", returnByValue: true })) as { result: { value: [number, number] } };
+      const [height, width] = result.value;
+      if (width > s.w) console.log(`  warning: ${s.path} is ${width}px wide at ${s.w}px (horizontal scroll)`);
+      const h = s.mobile ? Math.min(height, s.h) : s.h;
+      await cdp.send("Emulation.setDeviceMetricsOverride", { width: s.w, height: h, deviceScaleFactor: s.scale, mobile: s.mobile });
+      const shot = (await cdp.send("Page.captureScreenshot", { format: "png" })) as { data: string };
+      writeFileSync(join(OUT, `${s.name}.png`), Buffer.from(shot.data, "base64"));
+      console.log(`  ${s.name}.png  ${s.path}  ${s.w}x${h}`);
+    }
+  };
+
+  const pre = await startSite(PRELAUNCH);
+  await shoot(pre.site, PRELAUNCH_SHOTS);
+  await pre.stop();
+
+  const live = await startSite(LIVE);
+  try {
+    await shoot(live.site, SHOTS);
+    for (const c of CARDS) {
+      const res = await fetch(`${live.site}${c.path}`);
+      if (!res.ok) throw new Error(`${c.path}: ${res.status}`);
+      writeFileSync(join(OUT, `${c.name}.png`), Buffer.from(await res.arrayBuffer()));
+      console.log(`  ${c.name}.png  ${c.path}`);
+    }
+  } finally {
+    await live.stop();
   }
   cdp.close();
-  for (const c of CARDS) {
-    const res = await fetch(`${site}${c.path}`);
-    if (!res.ok) throw new Error(`${c.path}: ${res.status}`);
-    writeFileSync(join(OUT, `${c.name}.png`), Buffer.from(await res.arrayBuffer()));
-    console.log(`  ${c.name}.png  ${c.path}`);
-  }
   console.log(`Saved to ${OUT}`);
 } finally {
-  server.kill("SIGTERM");
   chrome.kill("SIGTERM");
   await new Promise((r) => (chrome.exitCode !== null ? r(null) : chrome.once("exit", r)));
   rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 });

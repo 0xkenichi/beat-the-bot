@@ -22,7 +22,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ n: stri
         <div style={{ display: "flex", flexDirection: "column", width: 500, gap: 12 }}>
           <span style={{ fontSize: 26, color: OG.muted }}>The bots</span>
           {t.bots.length ? t.bots.slice(0, 3).map((b) => (
-            <div key={b.wallet} style={{ display: "flex", justifyContent: "space-between", background: OG.card, borderRadius: 14, padding: "12px 20px" }}>
+            <div key={b.wallet} style={{ display: "flex", justifyContent: "space-between", background: OG.card, border: "1px solid #e6e6ea", borderRadius: 14, padding: "12px 20px" }}>
               <span>{b.name}</span><span style={{ color: b.ret >= 0 ? OG.up : OG.down }}>{pctTxt(b.ret)}</span>
             </div>
           )) : <span style={{ color: OG.muted }}>{botsMode() === "picks" ? "Three AI bots pick every Monday." : "Three AI bots, real money, real trades."}</span>}
@@ -30,7 +30,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ n: stri
         <div style={{ display: "flex", flexDirection: "column", width: 520, gap: 12 }}>
           <span style={{ fontSize: 26, color: OG.muted }}>{beat ? `${beat} ${beat === 1 ? "human" : "humans"} beat the bots` : "The humans"}</span>
           {humans.length ? humans.map((h) => (
-            <div key={h.wallet} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: OG.card, borderRadius: 14, padding: "12px 20px" }}>
+            <div key={h.wallet} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: OG.card, border: "1px solid #e6e6ea", borderRadius: 14, padding: "12px 20px" }}>
               <span style={{ display: "flex", alignItems: "center" }}>{h.name}{h.beatTheBot ? <Badge text="BEAT THE BOT" /> : null}</span>
               <span style={{ color: h.ret >= 0 ? OG.up : OG.down }}>{pctTxt(h.ret)}</span>
             </div>

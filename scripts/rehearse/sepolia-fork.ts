@@ -140,7 +140,7 @@ async function main() {
   const preSite = startProcess("pnpm", ["--dir", "web", "exec", "next", "start", "-p", String(webPort)]);
   await waitFor(() => fetch(`${site}/api/agents/kit`).then((r) => { if (!r.ok) throw new Error(); }), "the site");
   const home0 = await page("/");
-  check(home0.includes("Opening soon.") && home0.includes("How a week works") && !home0.includes("How this week is scored"), "the home page says it is opening soon and explains a week, with no schedule");
+  check(home0.includes("Opening soon") && home0.includes("How a week works") && !home0.includes("How this week is scored"), "the home page says it is opening soon and explains a week, with no schedule");
   check((await page("/trade")).includes("Buying opens at launch"), "/trade shows live prices and says buying opens at launch");
   check((await page("/play")).includes("Free play opens when the picks contract is live"), "/play says free play opens when the contract is live");
   await stop(preSite);

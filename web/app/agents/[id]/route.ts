@@ -3,7 +3,7 @@ import { getLang } from "@/lib/lang";
 import { kvGet } from "@btb/shared/db";
 import { html } from "@/lib/html";
 import { page } from "@/views/layout";
-import { proof, spark } from "@/views/parts";
+import { botTile, proof, spark } from "@/views/parts";
 import { pct, usd, shares } from "@/lib/format";
 import { tokenByAddress } from "@btb/shared/universe";
 import { CHAINS, type ContractsChainId } from "@btb/shared/chain";
@@ -38,7 +38,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     title: a.name,
     description: a.strategy,
     image: `/api/og/agent/${a.id}`,
-    body: html`<h1>${a.name}</h1>
+    body: html`<h1 class="who" style="gap:14px">${botTile(a.id, a.name)}${a.name}</h1>
 <p style="font-size:1.05rem">${a.strategy}</p>
 ${a.paused ? html`<p class="notice">Paused: ${a.paused_reason}</p>` : ""}
 <section class="card"><div class="grid2">
@@ -49,7 +49,7 @@ ${a.paused ? html`<p class="notice">Paused: ${a.paused_reason}</p>` : ""}
 </div>${funded ? html`<div style="margin-top:12px">${spark(snaps.map((s) => ({ t: new Date(s.taken_at).getTime(), v: s.nav_usd })))}
 ${last ? html`<div class="small muted">Hourly snapshots. Latest ${new Date(last.taken_at).toISOString().replace("T", " ").slice(0, 16)} UTC at block ${last.block}.</div>` : ""}</div>` : ""}</section>
 ${locks.length ? html`<section class="card"><h2 style="margin-top:0">Weekly picks</h2><table><thead><tr><th>Week</th><th>Picks</th><th class="num">Return</th></tr></thead><tbody>
-${locks.map((l) => html`<tr><td>${l.week}</td><td class="small">${l.picks.map((p) => `${tick(p.tokenIndex)} ${(p.weightBps / 100).toFixed(0)}%`).join(" · ")}${proof({ tx: l.tx_hash, label: "lock", chain: cChain })}</td><td class="num">${weekRet.has(l.week) ? pct(weekRet.get(l.week)!, 2) : "live"}</td></tr>`)}
+${locks.map((l) => html`<tr><td>${l.week}</td><td><div class="picks" style="margin:0">${l.picks.map((p) => html`<span class="tag">${tick(p.tokenIndex)} ${Math.round(p.weightBps / 100)}%</span>`)}${proof({ tx: l.tx_hash, label: "lock", chain: cChain })}</div></td><td class="num">${weekRet.has(l.week) ? pct(weekRet.get(l.week)!, 2) : "live"}</td></tr>`)}
 </tbody></table></section>` : ""}
 ${note ? html`<section class="card"><h2 style="margin-top:0">This week</h2><p>${note.note}</p><p class="small muted">${note.source === "rule" ? "Rule-based." : note.source === "equal-weight" ? "Fallback rule." : `Chosen by ${note.source.replace("model:", "")}.`}</p></section>` : ""}
 ${funded && last && last.holdings.length ? html`<section class="card"><h2 style="margin-top:0">Holdings</h2><table><tbody>${last.holdings.map((h) => html`<tr><td><b>${h.ticker}</b></td><td class="num">${usd(h.valueUsd)}${proof({ token: h.token, holder: a.wallet })}</td></tr>`)}</tbody></table></section>` : ""}

@@ -4,6 +4,8 @@ import { t, type Lang } from "@/lib/copy";
 import { CSS } from "./styles";
 
 const NAV: [string, Parameters<typeof t>[1]][] = [["/", "nav_table"], ["/trade", "nav_trade"], ["/play", "nav_play"], ["/agents", "nav_agents"], ["/rules", "nav_rules"]];
+// The mark: the same rising line as the favicon, in a round badge.
+const MARK = raw('<span class="mark" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 64 64"><path d="M10 46l14-16 10 9 20-22" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>');
 
 export type PageOpts = { title?: string; description?: string; lang: Lang; path: string; body: Raw; scripts?: string[]; status?: number; image?: string };
 
@@ -20,7 +22,8 @@ export function page(o: PageOpts): Response {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0b5cff">
+<meta name="theme-color" content="#f4f4f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0b0d" media="(prefers-color-scheme: dark)">
 <title>${title}</title>
 <meta name="description" content="${desc}">
 <meta property="og:title" content="${title}">
@@ -31,9 +34,10 @@ ${o.image ? html`<meta property="og:image" content="${site()}${o.image}"><meta n
 </head>
 <body>
 <header class="top"><div class="bar">
-<a href="/" class="logo">${t(o.lang, "brand")}</a>
-<nav>${NAV.map(([href, key]) => html`<a href="${href}"${active(href) ? raw(' aria-current="page"') : ""}>${t(o.lang, key)}</a>`)}</nav>
+<a href="/" class="logo">${MARK}${t(o.lang, "brand")}</a>
+<nav>${NAV.filter(([href]) => href !== "/play" || o.path === "/play").map(([href, key]) => html`<a href="${href}"${active(href) ? raw(' aria-current="page"') : ""}>${t(o.lang, key)}</a>`)}</nav>
 <a class="lang" href="/api/lang?to=${o.lang === "pcm" ? "en" : "pcm"}">${o.lang === "pcm" ? "English" : t(o.lang, "lang_toggle")}</a>
+${o.path === "/play" ? "" : html`<a class="cta" href="/play">${t(o.lang, "cta_play")}</a>`}
 </div></header>
 <main>${o.body}</main>
 <footer class="foot">

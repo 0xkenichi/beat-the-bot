@@ -1,6 +1,6 @@
 # Screenshots (pre-launch preview)
 
-Captured on 12 Nov 2026 from a local preview of the production build, before launch, with `scripts/capture/screens.ts`. Phones are emulated at 390 px wide (2x).
+Captured on 13 Nov 2026 from a local preview of the production build, before launch, with `scripts/capture/screens.ts`. Phones are emulated at 390 px wide (2x), in light mode (`SCREENS_SCHEME=dark` for the dark theme).
 
 What is real and what is not:
 
@@ -9,6 +9,7 @@ What is real and what is not:
 
 | File | Page |
 |---|---|
+| `phone-prelaunch.png`, `desktop-prelaunch.png` | `/` before the contracts are live: "Opening soon" and how a week works |
 | `phone-home.png` | `/`, the week's table |
 | `phone-trade.png` | `/trade`, buying real stocks |
 | `phone-momentum.png` | `/agents/momentum`, a house bot's picks and reasons |

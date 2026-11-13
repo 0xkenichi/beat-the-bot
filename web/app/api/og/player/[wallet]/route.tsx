@@ -28,7 +28,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ wallet: 
       </div>
       <div style={{ display: "flex", gap: 14, marginTop: 30 }}>
         {t.bots.slice(0, 3).map((b) => (
-          <div key={b.wallet} style={{ display: "flex", gap: 12, background: OG.card, borderRadius: 14, padding: "10px 18px", fontSize: 28 }}>
+          <div key={b.wallet} style={{ display: "flex", gap: 12, background: OG.card, border: "1px solid #e6e6ea", borderRadius: 14, padding: "10px 18px", fontSize: 28 }}>
             <span>{b.name}</span><span style={{ color: b.ret >= 0 ? OG.up : OG.down }}>{pctTxt(b.ret)}</span>
           </div>
         ))}

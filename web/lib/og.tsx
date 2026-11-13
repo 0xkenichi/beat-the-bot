@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 /** Shared look for the 1200x630 share cards. Every container with several children must be display:flex. */
-export const OG = { w: 1200, h: 630, bg: "#0f1013", card: "#17181d", ink: "#f1f1ee", muted: "#a3a6b3", brand: "#4d8bff", up: "#3ccf7a", down: "#ff6b5e", badge: "#ffd23f" };
+export const OG = { w: 1200, h: 630, bg: "#f4f4f5", card: "#ffffff", ink: "#0d0d10", muted: "#6b6b76", brand: "#2f6bff", up: "#119c4b", down: "#e0404a", badge: "#ffd23f" };
 export const pctTxt = (r: number | null | undefined, d = 2) => (r == null || !Number.isFinite(r) ? "–" : `${r >= 0 ? "+" : ""}${(r * 100).toFixed(d)}%`);
 
 export function frame(children: React.ReactNode, footer = "Prices: Chainlink on Base · every pick and trade onchain") {
@@ -9,7 +9,9 @@ export function frame(children: React.ReactNode, footer = "Prices: Chainlink on 
     (
       <div style={{ width: OG.w, height: OG.h, background: OG.bg, color: OG.ink, display: "flex", flexDirection: "column", padding: "56px 64px", fontSize: 32 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 18, fontSize: 30, color: OG.muted }}>
-          <div style={{ width: 44, height: 44, borderRadius: 10, background: "#0b5cff", display: "flex" }} />
+          <div style={{ width: 48, height: 48, borderRadius: 999, background: OG.ink, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <svg width="26" height="26" viewBox="0 0 64 64"><path d="M10 46l14-16 10 9 20-22" fill="none" stroke="#ffffff" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </div>
           <span style={{ color: OG.ink, fontWeight: 700 }}>Beat the Bot</span>
           <span>· weekly stock league on Base</span>
         </div>

@@ -38,7 +38,7 @@ export async function GET() {
     body: html`<h1>${t(lang, "nav_trade")}</h1>
 <p class="muted">Buy real Coinbase Tokenized Stocks with USDC, straight into your own wallet. Your portfolio is your entry.</p>
 ${mode === "view-only" ? html`<p class="notice">${t(lang, tradingReady() ? "view_only" : "prelaunch_trade")}</p>` : ""}
-<section class="card" id="signin"${session || !tradingReady() ? " hidden" : ""}><p style="margin-top:0">${t(lang, "signin_note")}</p><button class="btn block" id="signin-btn">${t(lang, "sign_in")}</button></section>
+<section class="card" id="signin"${session || !tradingReady() ? " hidden" : ""}><p style="margin-top:0">${t(lang, "signin_note")}</p><button class="btn brand block" id="signin-btn">${t(lang, "sign_in")}</button></section>
 <section class="card" id="confirm" hidden><h2 style="margin-top:0">${t(lang, "non_us_title")}</h2><p>${t(lang, "non_us_text")} <a href="/terms">${t(lang, "terms_link")}</a></p><button class="btn block" id="confirm-btn">${t(lang, "non_us_confirm")}</button></section>
 <div id="msg" role="status"></div>
 <section class="card"><div class="row between"><h2 style="margin:0">${t(lang, "buy")}</h2><span class="small muted">${t(lang, "pick_up_to")}</span></div>

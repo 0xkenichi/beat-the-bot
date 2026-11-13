@@ -11,7 +11,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const worst = d.weekly.length > 1 ? Math.min(...d.weekly.map((w) => w.ret)) : null;
   const tone = (r: number | null) => (r == null ? OG.ink : r < 0 ? OG.down : OG.up);
   const stat = (label: string, value: string, color: string = OG.ink) => (
-    <div style={{ display: "flex", flexDirection: "column", background: OG.card, borderRadius: 16, padding: "18px 24px", width: 250 }}>
+    <div style={{ display: "flex", flexDirection: "column", background: OG.card, border: "1px solid #e6e6ea", borderRadius: 16, padding: "18px 24px", width: 250 }}>
       <span style={{ fontSize: 22, color: OG.muted }}>{label}</span>
       <span style={{ fontSize: 44, fontWeight: 800, color }}>{value}</span>
     </div>

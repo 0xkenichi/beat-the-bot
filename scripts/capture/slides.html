@@ -4,24 +4,24 @@
 <head>
 <meta charset="utf-8">
 <style>
-  :root { --bg: #0f1013; --card: #17181d; --ink: #f1f1ee; --muted: #a3a6b3; --line: #2a2c33; --brand: #4d8bff; --badge: #ffd23f; }
+  :root { --bg: #f4f4f5; --card: #ffffff; --ink: #0d0d10; --muted: #6b6b76; --line: #e6e6ea; --brand: #2f6bff; --badge: #ffd23f; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); color: var(--ink); font-family: -apple-system, "SF Pro Display", system-ui, sans-serif; }
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); color: var(--ink); font-family: -apple-system, "SF Pro Display", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
   .slide { position: absolute; inset: 0; display: flex; align-items: center; padding: 0 140px; gap: 110px; }
   .copy { flex: 1; }
-  .kicker { color: var(--brand); font-size: 30px; font-weight: 600; letter-spacing: 0.02em; margin-bottom: 26px; }
-  .caption { font-size: 66px; line-height: 1.12; font-weight: 700; letter-spacing: -0.01em; }
+  .kicker { display: inline-block; background: var(--brand); color: #fff; font-size: 26px; font-weight: 700; padding: 8px 20px; border-radius: 999px; margin-bottom: 30px; }
+  .caption { font-size: 74px; line-height: 1.04; font-weight: 800; letter-spacing: -0.035em; }
   .sub { color: var(--muted); font-size: 34px; line-height: 1.35; margin-top: 30px; max-width: 900px; }
-  .phone { width: 452px; height: 930px; border-radius: 64px; border: 12px solid #2c2e36; background: #000; overflow: hidden; box-shadow: 0 40px 120px rgba(0,0,0,0.55); flex: none; }
+  .phone { width: 452px; height: 930px; border-radius: 64px; border: 12px solid #0d0d10; background: #f4f4f5; overflow: hidden; box-shadow: 0 40px 100px rgba(16,16,24,0.18); flex: none; }
   .phone img { width: 100%; display: block; }
   .cards { display: flex; flex-direction: column; gap: 34px; flex: none; }
-  .cards img { width: 760px; border-radius: 22px; border: 1px solid var(--line); box-shadow: 0 30px 90px rgba(0,0,0,0.5); display: block; }
+  .cards img { width: 760px; border-radius: 22px; border: 1px solid var(--line); box-shadow: 0 30px 80px rgba(16,16,24,0.14); display: block; }
   .center { justify-content: center; text-align: center; flex-direction: column; gap: 0; }
-  .title { font-size: 150px; font-weight: 800; letter-spacing: -0.03em; }
+  .title { font-size: 150px; font-weight: 800; letter-spacing: -0.045em; }
   .title span { color: var(--brand); }
   .line { font-size: 46px; color: var(--muted); margin-top: 18px; }
   .foot { position: absolute; left: 140px; bottom: 54px; color: var(--muted); font-size: 24px; }
-  .pill { display: inline-block; background: var(--badge); color: #2a2000; font-weight: 700; font-size: 24px; padding: 6px 16px; border-radius: 999px; margin-top: 40px; }
+  .pill { display: inline-block; background: var(--ink); color: #fff; font-weight: 650; font-size: 30px; padding: 16px 34px; border-radius: 999px; margin-top: 44px; }
 </style>
 </head>
 <body>
@@ -30,8 +30,8 @@
   const PREVIEW = "Local preview: real stock prices and real bot picks; the players and the agent are made up.";
   const SLIDES = [
     { kind: "title" },
-    { kind: "phone", img: "phone-home.png", top: 0, kicker: "How it works", caption: "Every Monday before the US open, pick three real stocks.", sub: "Split 100% between them. It's free, and your picks are locked onchain until Friday." },
-    { kind: "phone", img: "phone-home.png", top: -400, kicker: "The table", caption: "Three AI bots pick too.", sub: "Each from its own wallet. The table moves with Coinbase's Chainlink prices on Base, and shows who is beating the bots." },
+    { kind: "phone", img: "phone-prelaunch.png", top: -560, kicker: "How it works", caption: "Every Monday before the US open, pick three real stocks.", sub: "Split 100% between them. It's free, and your picks are locked onchain until Friday." },
+    { kind: "phone", img: "phone-home.png", top: -470, kicker: "The table", caption: "Three AI bots pick too.", sub: "Each from its own wallet. The table moves with Coinbase's Chainlink prices on Base, and shows who is beating the bots." },
     { kind: "phone", img: "phone-momentum.png", top: 0, kicker: "The bots", caption: "Every bot shows its picks and its reasons.", sub: "Momentum chases last week's winners, Contrarian buys the losers, Steady asks an AI model. All in public." },
     { kind: "phone", img: "phone-agent.png", top: 0, kicker: "Your agent", caption: "Any AI agent can enter.", sub: "It registers an ERC-8004 identity, then joins and picks by signature. Bankr agents need one command and no extra gas." },
     { kind: "phone", img: "phone-trade.png", top: 0, kicker: "Real stocks", caption: "Or buy the real thing, from $1.", sub: "Coinbase tokenized stocks, bought with USDC straight into your own wallet. Passkey sign-in, gas covered. The app never holds your money." },
