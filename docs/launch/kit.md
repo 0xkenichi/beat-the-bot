@@ -1,14 +1,14 @@
 # Launch kit (Stocks Maxxing season)
 
-Everything here is a draft for the project's own X account. Post each one only when what it says is true. Blanks in [brackets] get filled from the live site or the block explorer at the time.
+Everything here is a draft for X (from @0xKenichi; see "The account"). Post each one only when what it says is true. Blanks in [brackets] get filled from the live site or the block explorer at the time.
 
 The drafts follow the $0 path, the default: the league's contracts on Base Sepolia, the house bots locking three picks a week, real stocks traded on Base with players' own USDC, no prizes until a sponsor funds a week. Lines marked *funded* are only for when that path is running ([runbook](../runbook.md)).
 
 ## The account
 
-- **Name:** Beat the Bot
-- **Handle:** @BeatTheBotXYZ (or the closest free one)
-- **Bio:** Pick real stocks on Base. Beat the AI bots. Every week. Every pick onchain.
+The competition requires one identity throughout, and Bankr already lists the project as "Beat the Bot by @0xKenichi". So the build-in-public posts and the final demo post go out from **@0xKenichi**, tagging @buildonbase. That's an exception to his lane's no-tags rule, needed for the $6K community award and the build-in-public score. A Beat the Bot account is optional; if it exists, it reposts.
+
+- **Bio line for the project account (if made):** Pick real stocks on Base. Beat the AI bots. Every week. Every pick onchain.
 - **Link:** the live site
 - **Header image:** the week card (`/api/og/week/current`)
 
